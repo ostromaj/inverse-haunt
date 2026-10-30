@@ -147,7 +147,7 @@
     return { mon, cute: [cuteGhost(0), cuteGhost(1)], pumpkin: [pumpkin(), pumpkin()], key, batt, door: [door(false), door(true)], figure };
   }
   const SP = sprites();
-  const MSET = /[?&]monsters=classic/.test(location.search) ? 'classic' : /[?&]monsters=new/.test(location.search) ? 'new' : 'classic';
+  const MSET = (location.search.match(/[?&]monsters=(classic|new|main)/) || [0, 'main'])[1];
   const GLOW = { ghost: 22, shade: 0, widow: 24, grinner: 6, hollow: 3 };
 
   // ---------- maze ----------
@@ -233,7 +233,7 @@
     updateHud();
   }
   function makeMonster(tx, ty, i) {
-    return { x: tx + 0.5, y: ty + 0.5, tx, ty, ptx: tx, pty: ty, kind: window.Monsters.SETS[MSET][i % 3], bob: Math.random() * 6, hunting: false, stun: 0 };
+    return { x: tx + 0.5, y: ty + 0.5, tx, ty, ptx: tx, pty: ty, kind: window.Monsters.SETS[MSET][i % window.Monsters.SETS[MSET].length], bob: Math.random() * 6, hunting: false, stun: 0 };
   }
   function respawnFar(mon) {
     const d = S.dist, W = S.maze.W, opts = [];
@@ -740,9 +740,9 @@
     g.fillStyle = Math.random() < 0.1 ? '#2a0008' : '#000'; g.fillRect(0, 0, w, h);
     const s = Math.min(w, h) * (0.6 + u * 0.7) * (1 + (Math.random() - 0.5) * 0.05);
     const MD = window.Monsters.D[kind];
-    if (MD && MD.face && kind !== 'ghost' && kind !== 'shade') {
+    if (MD && MD.face && kind !== 'ghost') {
       const tex = SP.mon[kind][Math.random() < 0.5 ? 0 : 1].canvas, [fx, fy, fw, fh] = MD.face;
-      const sw = fw * tex.width, sh = fh * tex.height, k = Math.max(w / sw, h / sh) * (0.9 + u * 0.5);
+      const sw = fw * tex.width, sh = fh * tex.height, k = Math.min(w / sw, h / sh) * (1.05 + u * 0.6);
       g.imageSmoothingEnabled = false;
       g.drawImage(tex, fx * tex.width, fy * tex.height, sw, sh, w / 2 - sw * k / 2 + (Math.random() - 0.5) * 30, h / 2 - sh * k / 2 + (Math.random() - 0.5) * 30, sw * k, sh * k);
       if (Math.random() < 0.25) { g.fillStyle = 'rgba(160,0,20,.35)'; g.fillRect(0, 0, w, h); }
@@ -774,7 +774,7 @@
   function ambientScare() {
     if (S.scaredy) { S.effects.push({ kind: 'bat', t: 0, dur: 2.2 }); Snd.squeak(); return; }
     const r = Math.random(), p = S.player;
-    if (r < 0.25) { setMode('scare'); jumpscare(() => { setMode('play'); toast('…was that real?'); }, window.Monsters.SETS[MSET][Math.floor(Math.random() * 3)]); }
+    if (r < 0.25) { setMode('scare'); jumpscare(() => { setMode('play'); toast('…was that real?'); }, window.Monsters.SETS[MSET][Math.floor(Math.random() * window.Monsters.SETS[MSET].length)]); }
     else if (r < 0.7) {
       // a figure stands at the end of the corridor you are looking down, then is gone
       let d = 0.5; while (d < 7 && !wallAt(p.x + Math.cos(p.a) * (d + 0.3), p.y + Math.sin(p.a) * (d + 0.3))) d += 0.25;

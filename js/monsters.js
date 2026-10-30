@@ -25,22 +25,62 @@
     g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(25.5, 27, 1, 8); g.fillRect(38, 27, 1, 10);
   }, em(g) { g.fillStyle = '#ff1a2e'; g.beginPath(); g.arc(26.5, 23, 1.6, 0, 7); g.arc(37.5, 23, 1.6, 0, 7); g.fill(); }, face: [0.1, 0, 0.8, 0.45] };
 
-  D.shade = { w: 64, h: 128, size: 1.05, draw(g, frame) {
-    g.fillStyle = '#030104';
-    g.beginPath(); g.moveTo(32, 14);
-    for (let i = 0; i <= 24; i++) { const a = Math.PI + (i / 24) * Math.PI * 2; const rr = (i % 2 ? 20 : 28) + ((i * 7 + frame * 5) % 6); g.lineTo(32 + Math.cos(a) * rr * 0.9, 58 + Math.sin(a) * rr * 1.5); }
-    g.fill();
-    g.fillRect(14, 60, 36, 50);
-    for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(14 + i * 5, 108); g.lineTo(16 + i * 5 + (frame ? 2 : -2), 126); g.lineTo(19 + i * 5, 108); g.fill(); }
-    g.strokeStyle = '#030104'; g.lineWidth = 3;
-    g.beginPath(); g.moveTo(16, 62); g.lineTo(0, 92); g.moveTo(48, 62); g.lineTo(64, 90); g.stroke();
-    g.fillStyle = '#d9d2c0';
-    for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(17 + i * 3.4, 54); g.lineTo(18.7 + i * 3.4, 61 + (i % 2) * 2); g.lineTo(20.4 + i * 3.4, 54); g.fill(); }
-  }, em(g, frame) { g.fillStyle = '#ff2236'; for (const [ex, ey] of [[23, 40], [41, 40], [32, 33], [18, 30], [46, 31]]) { g.beginPath(); g.ellipse(ex, ey + (frame ? 1 : 0), 2.2, 1.3, 0, 0, 7); g.fill(); } }, face: [0, 0.12, 1, 0.45] };
+  // (the Shade is defined below, after the jitter helper)
 
   // ---------------- new set ----------------
   // tiny seeded jitter so hand-drawn details are stable between frames
   const J = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+  // THE SHADE — a hunched shadow that is mostly mouth. Lopsided cluster of red slit eyes,
+  // a gaping maw that glows faintly from inside, crooked yellow teeth, arms like dead branches.
+  D.shade = { w: 96, h: 192, size: 1.15, draw(g, frame) {
+    const f = frame ? 1 : -1, ink = '#020103';
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    // arms: long, jointed, bent wrong
+    g.strokeStyle = ink;
+    for (const [s, a] of [[-1, 0], [1, 1]]) {
+      g.lineWidth = 3.4; g.beginPath(); g.moveTo(48 + s * 16, 74); g.lineTo(48 + s * 38, 96 + f * s); g.lineTo(48 + s * 34, 140 + a * 6); g.lineTo(48 + s * 42, 168 + f); g.stroke();
+      g.lineWidth = 1.6; g.strokeStyle = '#2a2420';
+      const hx = 48 + s * 42, hy = 168 + f;
+      for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(hx, hy); g.quadraticCurveTo(hx + s * (2 + k * 3), hy + 8, hx + s * (k * 4 - 3), hy + 18 + (k % 2) * 3); g.stroke(); }
+      g.strokeStyle = ink;
+    }
+    // body: ragged, lopsided, dissolving into smoke at the bottom
+    g.fillStyle = ink; g.beginPath(); g.moveTo(30, 66);
+    for (let i = 0; i <= 16; i++) { const t = i / 16; g.lineTo(30 - 6 * Math.sin(t * 3) - J(i + frame * 5) * 6, 66 + t * 104); }
+    for (let i = 0; i <= 18; i++) g.lineTo(26 + i * 2.5, 170 + J(i * 2 + frame * 9) * 20);
+    for (let i = 16; i >= 0; i--) { const t = i / 16; g.lineTo(68 + 4 * Math.sin(t * 4) + J(i + 30 + frame * 5) * 6, 66 + t * 104); }
+    g.closePath(); g.fill();
+    for (let i = 0; i < 14; i++) { g.fillStyle = 'rgba(2,1,3,' + (0.25 + J(i + 70) * 0.5) + ')'; g.fillRect(28 + J(i + 3) * 42, 170 + J(i + 11) * 10, 1.5 + J(i) * 2, 10 + J(i + 5) * 12); }
+    // head: tilted, uneven, wider on one side, swallowing the shoulders
+    g.beginPath();
+    for (let i = 0; i <= 28; i++) { const a = (i / 28) * Math.PI * 2, r = 24 + (J(i * 1.7) - 0.5) * 4 + (Math.cos(a) > 0 ? 3 : 0); g.lineTo(46 + Math.cos(a) * r * 0.95, 52 + Math.sin(a) * r * 1.15); }
+    g.fill();
+    // the maw: a tall, ragged hole that takes up most of the face
+    const mw = [[34, 52], [40, 49], [47, 51], [55, 48], [61, 53], [63, 66], [60, 80 + frame * 2], [52, 88 + frame * 3], [43, 86 + frame * 3], [36, 78 + frame], [32, 64]];
+    g.fillStyle = '#1a0205'; g.beginPath(); mw.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill();
+    // crooked teeth around the rim, uneven and yellowed
+    g.fillStyle = '#cbbf98';
+    const rim = (t) => { const n = mw.length, u = t * n, i = Math.floor(u) % n, j = (i + 1) % n, k = u - Math.floor(u); return [mw[i][0] + (mw[j][0] - mw[i][0]) * k, mw[i][1] + (mw[j][1] - mw[i][1]) * k]; };
+    for (let i = 0; i < 26; i++) {
+      const t = i / 26, [x, y] = rim(t), [x2, y2] = rim(t + 0.01), nx = -(y2 - y), ny = x2 - x, nl = Math.hypot(nx, ny) || 1;
+      const len = 3 + J(i + 20) * 6, wdt = 1 + J(i + 40) * 1.2;
+      const tx = x + (nx / nl) * len + (J(i + 60) - 0.5) * 2, ty = y + (ny / nl) * len;
+      g.beginPath(); g.moveTo(x - wdt, y); g.lineTo(tx, ty); g.lineTo(x + wdt, y); g.fill();
+    }
+    // strings of drool
+    g.strokeStyle = 'rgba(190,180,170,.55)'; g.lineWidth = 0.7;
+    for (const [x0, x1] of [[40, 42], [50, 49], [57, 58]]) { g.beginPath(); g.moveTo(x0, 52); g.quadraticCurveTo((x0 + x1) / 2, 72 + frame * 3, x1, 84 + frame * 2); g.stroke(); }
+  }, em(g, frame) {
+    // throat glow
+    const tg = g.createRadialGradient(48, 70, 1, 48, 70, 10); tg.addColorStop(0, 'rgba(150,10,25,1)'); tg.addColorStop(1, 'rgba(150,10,25,0)');
+    g.fillStyle = tg; g.beginPath(); g.ellipse(48, 70, 7, 10, 0, 0, 7); g.fill();
+    // lopsided cluster of slit eyes, different sizes, one drifting down the cheek
+    g.fillStyle = '#ff1d30';
+    for (const [x, y, w, h, r] of [[36, 38, 3.4, 1.2, 0.35], [52, 35, 4.2, 1.4, -0.2], [44, 30, 2.2, 0.9, 0.1], [60, 42, 2.6, 1, -0.5], [31, 47, 1.8, 0.8, 0.6], [57, 28, 1.6, 0.7, 0]]) {
+      g.beginPath(); g.ellipse(x, y + (frame && x > 50 ? 0.6 : 0), w, h, r, 0, 7); g.fill();
+    }
+  }, face: [0.17, 0.08, 0.66, 0.42] };
 
   // THE WIDOW — impossibly tall, head snapped sideways, wet black hair over the face,
   // one wide eye staring through a gap, arms hanging to the floor.
@@ -171,6 +211,6 @@
     for (let k = 0; k < 5; k++) { g.beginPath(); g.moveTo(44 + k * 2.2, 51); g.lineTo(44 + k * 2.2, 55); g.stroke(); }
   }, em(g) { g.fillStyle = '#ff1f33'; g.fillRect(41.5, 39.2, 1.6, 1.6); g.fillRect(53, 39.2, 1.6, 1.6); }, face: [0.25, 0.08, 0.5, 0.3] };
 
-  const SETS = { classic: ['ghost', 'ghost', 'shade'], new: ['widow', 'grinner', 'hollow'] };
+  const SETS = { main: ['grinner', 'shade'], classic: ['ghost', 'ghost', 'shade'], new: ['widow', 'grinner', 'hollow'] };
   root.Monsters = { D, SETS };
 })(window);
