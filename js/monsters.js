@@ -323,6 +323,133 @@
     g.restore();
   }, face: [0.2, 0.6, 0.6, 0.4] };
 
-  const SETS = { main: ['grinner', 'shade'], horror: ['spider', 'tall', 'hanger'], classic: ['ghost', 'ghost', 'shade'], new: ['widow', 'grinner', 'hollow'] };
+  // ======== HORRIFYING MODE v2: three silhouettes that look nothing alike ========
+
+  // THE CRAWLER — low to the floor, dragging itself toward you on its belly.
+  // Black hair spills over its face onto the boards; one eye shows. Long arms
+  // claw forward in jerks. 6 frames: 0-3 crawl cycle, 4-5 the head jerking up.
+  D.crawler = { w: 128, h: 64, size: 0.5, frames: 6, draw(g, frame) {
+    const reach = [[0, 0], [6, -3], [0, 0], [-6, 3], [2, 0], [-2, 0]][frame];
+    const jerk = frame === 4 ? -5 : frame === 5 ? 3 : 0;
+    const skin = '#b5afa5', dark = '#3b3631';
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    // back hunched up behind the head, torn grey dress
+    const bg = g.createLinearGradient(0, 8, 0, 50); bg.addColorStop(0, '#3a3530'); bg.addColorStop(1, '#0c0a09');
+    g.fillStyle = bg; g.beginPath(); g.ellipse(64, 30, 30, 18, 0, Math.PI, 0); g.lineTo(94, 46); g.lineTo(34, 46); g.closePath(); g.fill();
+    // arms: elbows jut up, hands slap down far in front
+    const arm = (sx, ex, ey, hx, hy) => {
+      g.strokeStyle = dark; g.lineWidth = 6; g.beginPath(); g.moveTo(sx, 36); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
+      g.strokeStyle = skin; g.lineWidth = 4.2; g.stroke();
+      g.strokeStyle = skin; g.lineWidth = 1.6;
+      for (let k = 0; k < 5; k++) { g.beginPath(); g.moveTo(hx, hy); g.lineTo(hx + (k - 2) * 3.4, hy + 5 + (k % 2) * 2); g.stroke(); }
+    };
+    arm(44, 18 - reach[0], 14 + reach[1], 8 - reach[0], 58);
+    arm(84, 110 + reach[0], 14 - reach[1], 120 + reach[0], 58);
+    // head raised toward you
+    g.save(); g.translate(64, 34 + jerk); g.rotate(jerk * 0.03);
+    g.fillStyle = '#c9c3b8'; g.beginPath(); g.ellipse(0, 0, 12, 14, 0, 0, 7); g.fill();
+    // hair: a wet black curtain falling over the face and spilling onto the floor
+    g.strokeStyle = '#050304';
+    for (let i = 0; i < 44; i++) {
+      const sx = -13 + i * 0.62, len = 18 + J(i) * 16, wob = (J(i + 30) - 0.5) * 8;
+      if (sx > -3 && sx < 2 && i % 3) continue; // the parting
+      g.lineWidth = 1.1 + J(i + 7);
+      g.beginPath(); g.moveTo(sx * 0.9, -13); g.quadraticCurveTo(sx * 1.1 + wob, 4, sx * 1.6 + wob * 1.4, len); g.stroke();
+    }
+    g.fillStyle = '#050304'; g.beginPath(); g.ellipse(0, -9, 13, 7, 0, Math.PI, 0); g.fill();
+    // mouth through the parting
+    g.fillStyle = '#120606'; g.beginPath(); g.ellipse(0, 6, 2.6, 5 + (frame % 2), 0, 0, 7); g.fill();
+    g.restore();
+    // hair pooled on the floor
+    g.fillStyle = '#050304'; g.beginPath(); g.ellipse(64, 60, 24, 5, 0, 0, 7); g.fill();
+  }, em(g, frame) {
+    const jerk = frame === 4 ? -5 : frame === 5 ? 3 : 0;
+    g.save(); g.translate(64, 34 + jerk); g.rotate(jerk * 0.03);
+    g.fillStyle = '#f2efe6'; g.beginPath(); g.ellipse(-0.5, -3, 2.3, 2, 0, 0, 7); g.fill();
+    g.fillStyle = '#000'; g.fillRect(-0.9 + (frame % 3) * 0.4, -3.6, 1.2, 1.2);
+    g.restore();
+  }, face: [0.33, 0.2, 0.34, 0.7] };
+
+  // THE MASS — a heap of fused bodies that fills the whole hallway. Faces of every
+  // size are pressed into it, mouths opening and closing out of time with each other.
+  // Arms reach out of it. 4 frames.
+  const MASS_FACES = [[44, 44, 13, 0.1], [82, 38, 11, -0.3], [64, 70, 16, 0.05], [30, 84, 9, 0.5], [98, 76, 10, -0.2], [52, 100, 8, -0.4], [80, 104, 9, 0.3], [62, 22, 7, 0.2], [20, 56, 6, -0.6], [108, 52, 7, 0.4]];
+  D.mass = { w: 128, h: 128, size: 1.0, frames: 4, draw(g, frame) {
+    g.lineCap = 'round';
+    // arms reaching out of the heap
+    for (const [x0, y0, x1, y1, s] of [[26, 70, 2, 46, -1], [104, 64, 126, 38, 1], [38, 104, 6, 112, -1], [94, 100, 124, 110, 1], [64, 30, 70, 2, 0]]) {
+      const w = frame % 2 ? 2 : -2;
+      g.strokeStyle = '#2b2420'; g.lineWidth = 5; g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo((x0 + x1) / 2 + w, (y0 + y1) / 2 - 6, x1 + w, y1); g.stroke();
+      g.strokeStyle = '#a49c90'; g.lineWidth = 3; g.stroke();
+      g.lineWidth = 1.2; for (let k = 0; k < 5; k++) { g.beginPath(); g.moveTo(x1 + w, y1); g.lineTo(x1 + w + (s || (k - 2) * 0.5) * 5 + (k - 2) * 1.5, y1 - 6 + k * 2.5); g.stroke(); }
+    }
+    // the heap: lumpy, glistening, dark
+    const mg = g.createRadialGradient(62, 70, 8, 64, 72, 62); mg.addColorStop(0, '#5a4c45'); mg.addColorStop(0.7, '#2c2320'); mg.addColorStop(1, '#120d0c');
+    g.fillStyle = mg; g.beginPath();
+    for (let i = 0; i <= 36; i++) { const a = (i / 36) * Math.PI * 2, r = 50 + (J(i * 2.3 + frame * 0.7) - 0.5) * 12; g.lineTo(64 + Math.cos(a) * r * 1.05, 70 + Math.sin(a) * r * 1.05 * (Math.sin(a) > 0 ? 1.15 : 1)); }
+    g.fill();
+    g.fillStyle = 'rgba(255,240,230,.06)'; for (let i = 0; i < 14; i++) { g.beginPath(); g.ellipse(20 + J(i) * 88, 30 + J(i + 4) * 80, 5 + J(i + 2) * 8, 2 + J(i + 3) * 3, J(i + 5) * 3, 0, 7); g.fill(); }
+    // the faces
+    MASS_FACES.forEach(([x, y, r, rot], i) => {
+      const scream = 0.35 + 0.65 * (((i * 3 + frame) % 4) / 3);
+      g.save(); g.translate(x, y); g.rotate(rot * 1.6);
+      // long, stretched face
+      const fg = g.createLinearGradient(0, -r * 1.3, 0, r * 1.3); fg.addColorStop(0, '#cfc7b8'); fg.addColorStop(0.6, '#8e8576'); fg.addColorStop(1, '#3b342d');
+      g.fillStyle = fg; g.beginPath(); g.ellipse(0, r * 0.1, r * 0.62, r * 1.25, 0, 0, 7); g.fill();
+      // deep sockets that drag downward
+      for (const sx of [-1, 1]) {
+        const so = g.createRadialGradient(sx * r * 0.24, -r * 0.3, 0, sx * r * 0.24, -r * 0.2, r * 0.32); so.addColorStop(0, '#000'); so.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = so; g.beginPath(); g.ellipse(sx * r * 0.24, -r * 0.18, r * 0.2, r * 0.34, sx * 0.15, 0, 7); g.fill();
+      }
+      // mouth stretched into a long scream
+      g.fillStyle = '#050202'; g.beginPath(); g.ellipse(0, r * 0.62, r * 0.17, r * (0.18 + 0.5 * scream), 0, 0, 7); g.fill();
+      g.restore();
+    });
+    // folds of the heap pulled over the faces' edges, so they look sunk into it
+    g.fillStyle = 'rgba(30,23,20,.9)';
+    for (let i = 0; i < 16; i++) { g.beginPath(); g.ellipse(14 + J(i + 40) * 100, 22 + J(i + 60) * 96, 6 + J(i + 80) * 10, 3 + J(i + 90) * 5, J(i + 99) * 3, 0, 7); g.fill(); }
+  }, em(g) { }, face: [0.12, 0.12, 0.76, 0.76] };
+
+  // THE FACE — an enormous face that fills the corridor, emerging from the dark.
+  // Its tiny pupils follow you. The longer you stare at it, the wider its mouth opens.
+  // It only moves when you look away. 4 frames = mouth opening.
+  D.face = { w: 128, h: 128, size: 0.98, frames: 4, draw(g, frame) {
+    const open = frame / 3;
+    // gaunt skull-tight skin
+    const sk = g.createRadialGradient(56, 40, 6, 64, 62, 66); sk.addColorStop(0, '#d9d1c2'); sk.addColorStop(0.5, '#988e7c'); sk.addColorStop(1, '#2e2923');
+    g.fillStyle = sk; g.beginPath(); g.moveTo(64, 2); g.bezierCurveTo(112, 2, 120, 50, 108, 76); g.bezierCurveTo(98, 100, 82, 124, 64, 126); g.bezierCurveTo(46, 124, 30, 100, 20, 76); g.bezierCurveTo(8, 50, 16, 2, 64, 2); g.fill();
+    // hollow cheeks and temples
+    for (const sx of [-1, 1]) {
+      const ch = g.createRadialGradient(64 + sx * 30, 82, 0, 64 + sx * 30, 82, 20); ch.addColorStop(0, 'rgba(20,14,10,.75)'); ch.addColorStop(1, 'rgba(20,14,10,0)');
+      g.fillStyle = ch; g.beginPath(); g.ellipse(64 + sx * 30, 82, 14, 22, sx * -0.25, 0, 7); g.fill();
+      const tp = g.createRadialGradient(64 + sx * 46, 40, 0, 64 + sx * 46, 40, 14); tp.addColorStop(0, 'rgba(20,14,10,.6)'); tp.addColorStop(1, 'rgba(20,14,10,0)');
+      g.fillStyle = tp; g.beginPath(); g.ellipse(64 + sx * 46, 40, 10, 16, 0, 0, 7); g.fill();
+    }
+    // brow ridge and deep sunken sockets
+    for (const sx of [-1, 1]) {
+      const so = g.createRadialGradient(64 + sx * 21, 46, 1, 64 + sx * 21, 46, 15); so.addColorStop(0, '#000'); so.addColorStop(0.7, 'rgba(0,0,0,.92)'); so.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = so; g.beginPath(); g.ellipse(64 + sx * 21, 46, 15, 13, 0, 0, 7); g.fill();
+    }
+    // nose: two dark slits, no bridge
+    g.fillStyle = '#1a120e'; g.beginPath(); g.ellipse(60, 70, 2, 4, 0.3, 0, 7); g.ellipse(68, 70, 2, 4, -0.3, 0, 7); g.fill();
+    // cracked skin
+    g.strokeStyle = 'rgba(30,20,15,.6)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(40, 10); g.lineTo(46, 22); g.lineTo(43, 30); g.moveTo(92, 92); g.lineTo(84, 100); g.lineTo(88, 110); g.moveTo(98, 20); g.lineTo(90, 28); g.stroke();
+    // mouth: thin lips slowly splitting into a tall black void
+    g.fillStyle = '#0a0505';
+    g.beginPath(); g.ellipse(64, 94 + open * 6, 16 + open * 4, 2 + open * 16, 0, 0, 7); g.fill();
+    if (open > 0.3) { g.fillStyle = '#b9ae96'; for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(64 + k * 4 - 1.4, 92 + open * 6 - (2 + open * 16) + 1); g.lineTo(64 + k * 4, 92 + open * 6 - (2 + open * 16) + 5); g.lineTo(64 + k * 4 + 1.4, 92 + open * 6 - (2 + open * 16) + 1); g.fill(); } }
+    // fade the edges into darkness (ragged so it looks like it's coming out of the black)
+    g.globalCompositeOperation = 'destination-in';
+    const fade = g.createRadialGradient(64, 62, 30, 64, 64, 66); fade.addColorStop(0, '#000'); fade.addColorStop(0.75, 'rgba(0,0,0,.9)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = fade; g.fillRect(0, 0, 128, 128);
+    g.globalCompositeOperation = 'source-over';
+  }, em(g, frame) {
+    // tiny pupils that shift each frame, as if tracking you
+    const dx = [0, 1.5, -1.5, 0.5][frame];
+    g.fillStyle = '#fffaf0'; g.fillRect(64 - 21 + dx - 0.9, 46, 1.8, 1.8); g.fillRect(64 + 21 + dx - 0.9, 46, 1.8, 1.8);
+  }, face: [0.05, 0.05, 0.9, 0.9] };
+
+  const SETS = { main: ['grinner', 'shade'], horror: ['crawler', 'mass', 'face'], classic: ['ghost', 'ghost', 'shade'], new: ['widow', 'grinner', 'hollow'] };
   root.Monsters = { D, SETS };
 })(window);

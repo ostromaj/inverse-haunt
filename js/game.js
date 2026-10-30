@@ -149,7 +149,7 @@
   const SP = sprites();
   const MSET = (location.search.match(/[?&]monsters=(classic|new|main)/) || [0, 'main'])[1];
   const roster = () => window.Monsters.SETS[S.horror ? 'horror' : MSET];
-  const GLOWH = { spider: 6, tall: 4, hanger: 5 };
+  const GLOWH = { spider: 6, tall: 4, hanger: 5, crawler: 14, mass: 6, face: 10 };
   const GLOW = { ghost: 22, shade: 0, widow: 24, grinner: 6, hollow: 3 };
 
   // ---------- maze ----------
@@ -431,7 +431,7 @@
   function horrorMove(mon, dt, eu, sp, F) {
     const base = (mon.hunting ? F.speed * 1.15 : 0.9);
     mon.jt -= dt; mon.gl = Math.max(0, mon.gl - dt);
-    if (mon.kind === 'spider') {
+    if (mon.kind === 'spider' || mon.kind === 'crawler') {
       // scuttling bursts with limbs flickering, then dead still while the head wrenches around
       if (mon.jt <= 0) {
         mon.moving = !mon.moving;
@@ -448,6 +448,22 @@
       if (watched) { if (Math.random() < dt * 2.5) { mon.pose = Math.floor(Math.random() * 4); mon.gl = 0.06; } return 0; }
       if (mon.jt <= 0) { mon.jt = 0.5; mon.pose = Math.floor(Math.random() * 4); }
       return base * 1.6;
+    }
+    if (mon.kind === 'face') {
+      // a staring contest: frozen while you look at it, but its mouth keeps opening;
+      // the moment you look away it slides toward you
+      const watched = onScreen(mon);
+      mon.stare = Math.max(0, Math.min(3.99, (mon.stare || 0) + (watched ? dt * 0.8 : -dt * 1.5)));
+      mon.pose = Math.floor(mon.stare);
+      if (watched) { if (Math.random() < dt * 1.2) mon.gl = 0.05; return 0; }
+      return base * 1.7;
+    }
+    if (mon.kind === 'mass') {
+      // a slow heave that never stops; it shudders when close
+      mon.ft = (mon.ft || 0) - dt;
+      if (mon.ft <= 0) { mon.pose = (mon.pose + 1) % 4; mon.ft = 0.18 + Math.random() * 0.2; }
+      if (eu < 4 && Math.random() < dt * 4) mon.gl = 0.06;
+      return base * (mon.lit ? 0.6 : 1.05);
     }
     if (mon.kind === 'hanger') {
       // convulsing, never still; worse the closer it gets
@@ -499,7 +515,11 @@
     const horizon = Math.round(RH / 2 + bobPx), posZ = RH / 2;
     // flashlight cone (sways with walking)
     const flashOn = S.blackout <= 0;
-    let flash = flashOn ? (S.battery < 15 && Math.random() < 0.12 ? 0.25 : 1) : 0;
+    // no flicker: a dying battery and blackouts fade the beam smoothly (photosensitivity-safe)
+    S.beamLvl = S.beamLvl == null ? 1 : S.beamLvl;
+    const beamTarget = !flashOn ? 0 : S.battery < 15 ? 0.45 + 0.4 * (S.battery / 15) : 1;
+    S.beamLvl += (beamTarget - S.beamLvl) * 0.08;
+    let flash = S.beamLvl;
     const ccx = RW / 2 + Math.cos(p.bob * 0.5) * 6 * p.moving, ccy = RH / 2 + 8 + Math.abs(Math.sin(p.bob)) * 4 * p.moving;
     const rx = RW * 0.44, ry = RH * 0.72;
     for (let y = 0; y < RH; y++) {
@@ -583,10 +603,10 @@
         mon.rt -= 1 / 60;
         if (mon.rt <= 0) { mon.ghost = [mon.rx, mon.ry]; mon.rx = mon.x; mon.ry = mon.y; mon.rt = 0.06 + Math.random() * 0.12; }
         mx = mon.rx; my = mon.ry;
-        if (mon.gl > 0) { const k = (Math.random() - 0.5) * 0.5; mx += -Math.sin(p.a) * k; my += Math.cos(p.a) * k; }
+        if (mon.gl > 0) { const k = (Math.random() - 0.5) * (mon.kind === 'mass' || mon.kind === 'face' ? 0.15 : 0.5); mx += -Math.sin(p.a) * k; my += Math.cos(p.a) * k; }
         if (window.Monsters.D[mon.kind].ceiling) lift = 1 - size;
         else lift = mon.kind === 'spider' && mon.moving ? Math.random() * 0.03 : 0;
-        if (mon.ghost && Math.random() < 0.35) list.push({ x: mon.ghost[0], y: mon.ghost[1], tex, size, lift, glow: 0, mon: true, faint: true });
+        if (mon.ghost && mon.rt > 0.04) list.push({ x: mon.ghost[0], y: mon.ghost[1], tex, size, lift, glow: 0, mon: true, faint: true });
       }
       list.push({ x: mx + jit + sx2, y: my + jit + sy2, tex, size, lift, glow, mon: true });
     }
@@ -621,7 +641,7 @@
     }
     // static when something is close
     if (S.dread > 0.15 && !S.scaredy) {
-      const n = (S.dread * S.dread * RW * RH * 0.18) | 0;
+      const n = (S.dread * S.dread * RW * RH * 0.08) | 0;
       for (let i = 0; i < n; i++) { const v = (Math.random() * 120) | 0; buf[(Math.random() * RW * RH) | 0] = 0xff000000 | (v << 16) | (v << 8) | v; }
     }
     if (S.horror) { const n = (RW * RH * 0.02) | 0; for (let i = 0; i < n; i++) { const v = (Math.random() * 70) | 0; buf[(Math.random() * RW * RH) | 0] = 0xff000000 | (v << 16) | (v << 8) | v; } }
@@ -646,7 +666,6 @@
     drawHand();
     if (S.showMap) drawMap();
     for (const e of S.effects) if (e.kind === 'bat') { const u = e.t / e.dur; cx.font = '48px serif'; cx.fillText('🦇', -60 + (VW + 120) * u, VH * 0.35 + Math.sin(u * 20) * 24); }
-    if (S.flashT > 0) { cx.fillStyle = 'rgba(220,255,240,' + S.flashT + ')'; cx.fillRect(0, 0, VW, VH); S.flashT = Math.max(0, S.flashT - 0.04); }
   }
   // the hand holding the flashlight
   function drawHand() {
@@ -818,7 +837,7 @@
     const jump = !S.scaredy;
     const go = () => askQuestion(S.scaredy ? 'Boo! A friendly ghost wants a math problem' : S.horror ? 'It has you' : 'It caught you', (correct) => {
       if (correct) {
-        S.flashT = 0.7; Snd.banish();
+        Snd.banish();
         S.monsters = S.monsters.filter(m => m !== mon); S.banished++;
         toast(S.scaredy ? 'Poof!' : 'Destroyed', S.monsters.length ? S.monsters.length + ' still in the house' : 'This floor is quiet. For now.');
       } else {
@@ -860,8 +879,8 @@
 
   // ---------- scares ----------
   function flash(then) {
-    const f = $('flash'); f.style.transition = 'none'; f.style.background = S.scaredy ? '#ffd6e4' : '#b3263a'; f.style.opacity = '.6';
-    requestAnimationFrame(() => { f.style.transition = 'opacity .5s'; f.style.opacity = '0'; });
+    const f = $('flash'); f.style.transition = 'opacity .3s'; f.style.background = '#000'; f.style.opacity = '.7';
+    setTimeout(() => { f.style.transition = 'opacity .6s'; f.style.opacity = '0'; }, 380);
     setTimeout(then, 380);
   }
   function jumpscare(then, kind, silent) {
@@ -872,14 +891,12 @@
       const u = (now - t0) / D;
       if (u >= 1) { box.classList.remove('on'); box.style.filter = ''; then(); return; }
       drawFace(g, VW, VH, u, kind);
-      box.style.filter = S.horror && ((u > 0.45 && u < 0.52) || (u > 0.7 && u < 0.74)) ? 'invert(1) contrast(1.6)' : '';
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
   }
   function drawFace(g, w, h, u, kind) {
-    if (u < 0.05) { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); return; } // blinding pop on impact
-    g.fillStyle = Math.random() < 0.1 ? '#2a0008' : '#000'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
     const s = Math.min(w, h) * (0.6 + u * 0.7) * (1 + (Math.random() - 0.5) * 0.05);
     const MD = window.Monsters.D[kind];
     if (MD && MD.face && kind !== 'ghost') {
@@ -887,7 +904,6 @@
       const sw = fw * tex.width, sh = fh * tex.height, k = Math.min(w / sw, h / sh) * (1.05 + u * 0.6);
       g.imageSmoothingEnabled = false;
       g.drawImage(tex, fx * tex.width, fy * tex.height, sw, sh, w / 2 - sw * k / 2 + (Math.random() - 0.5) * 30, h / 2 - sh * k / 2 + (Math.random() - 0.5) * 30, sw * k, sh * k);
-      if (Math.random() < 0.25) { g.fillStyle = 'rgba(160,0,20,.35)'; g.fillRect(0, 0, w, h); }
     } else {
     g.save(); g.translate(w / 2 + (Math.random() - 0.5) * 24, h / 2 + (Math.random() - 0.5) * 24);
     if (kind === 'shade') {
@@ -922,7 +938,7 @@
       let d = 0.5; while (d < 7 && !wallAt(p.x + Math.cos(p.a) * (d + 0.3), p.y + Math.sin(p.a) * (d + 0.3))) d += 0.25;
       if (d >= 2.5) { S.effects.push({ kind: 'figure', t: 0, dur: 0.75, x: p.x + Math.cos(p.a) * d, y: p.y + Math.sin(p.a) * d }); Snd.whisper(); }
       else S.nextScare = 4;
-    } else { S.blackout = 1.8; Snd.whisper(); setTimeout(() => { if (S.mode === 'play') toast('The flashlight flickers back on'); }, 1800); }
+    } else { S.blackout = 1.8; Snd.whisper(); setTimeout(() => { if (S.mode === 'play') toast('The flashlight comes back on'); }, 1800); }
   }
 
   // ---------- start / end ----------
