@@ -35,7 +35,7 @@ Each floor is a big looping maze (17×17 up to 25×25) with open pillar halls yo
 - **Fear levels:** Scaredy-cat (cute monsters, no jumpscares), Normal, and **Horrifying**. Horrifying swaps in three completely different monsters that all move wrong:
   - **The Crawler** drags itself along the floor toward you, hair spilling over its face, long arms clawing forward in jerks, then freezes while its head jerks up.
   - **The Mass** is a heap of fused bodies that fills the hallway, with stretched screaming faces pressed into it and arms reaching out. It heaves forward and never stops.
-  - **The Face** is an enormous gaunt face coming out of the dark. It only moves when you look away, and the longer you stare at it, the wider its mouth opens.
+  - **The Face** is an enormous gaunt face coming out of the dark. It only moves when you look away, and the longer you stare at it, the wider its mouth opens. If it gets close while your back is turned, it doesn't grab you: it slowly leans over you from behind, its upside-down face sinking into view from the top of the screen for about three seconds before it gets you. Turn around and it gets you immediately.
   - Everything moves in stop-motion jumps with glitches and afterimages. Monsters slip around behind you when they lose you, footsteps follow you and stop when you turn, there is one extra monster per floor, and grabbing a key wakes *everything*.
 - **Photosensitivity:** the game has no white flashes, strobing or flickering. Jumpscares fade in from black, the flashlight dims smoothly instead of flickering, and screen effects never flash.
 - **Room codes:** everyone who types the same code gets the same house and the same questions, so a class can race (highest score wins, time breaks ties).

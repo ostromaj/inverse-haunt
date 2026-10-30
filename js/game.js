@@ -258,7 +258,7 @@
     const dir0 = [[1, 0, 0], [0, 1, Math.PI / 2]].find(([a, b]) => !isWall(1 + a, 1 + b)) || [1, 0, 0];
     S.player = { x: 1.5, y: 1.5, a: dir0[2], bob: 0, moving: 0 };
     S.keysGot = 0; S.sealsLeft = F.seals; S.battery = 100; S.candles = 5; S.invuln = 3; S.doorCool = 0;
-    S.nextScare = S.horror ? 18 + Math.random() * 20 : 40 + Math.random() * 50; S.nextHunt = S.horror ? 6 + Math.random() * 6 : 22 + Math.random() * 15; S.nextStalk = 18 + Math.random() * 10; S.nextSteps = 10 + Math.random() * 10; S.blackout = 0; S.effects = []; S.distTile = -1; S.dread = 0; S.hit = 0;
+    S.nextScare = S.horror ? 18 + Math.random() * 20 : 40 + Math.random() * 50; S.nextHunt = S.horror ? 6 + Math.random() * 6 : 22 + Math.random() * 15; S.nextStalk = 18 + Math.random() * 10; S.nextSteps = 10 + Math.random() * 10; S.blackout = 0; S.loom = null; S.effects = []; S.distTile = -1; S.dread = 0; S.hit = 0;
     S.seen = new Uint8Array(W * W);
     if (S.deckFloor !== S.floor) { S.deck = Qs.floorDeck(S.floor, S.seed, 60); S.deckIdx = 0; S.deckCycle = 0; S.deckFloor = S.floor; }
     buildTextures(F, S.seed + '|tex' + S.floor);
@@ -361,6 +361,7 @@
     S.nextHunt -= dt;
     if (S.nextHunt <= 0) { S.nextHunt = S.horror ? 8 + Math.random() * 8 : 18 + Math.random() * 18; wakeOne(S.scaredy ? 'A ghost wants to play' : 'Something is hunting you'); }
 
+    if (S.loom) { if (updateLoom(dt)) return; }
     let near = 99, nearMon = null, seenD = 99, seenMon = null;
     for (const mon of S.monsters) {
       mon.bob += dt * 3; mon.stun = Math.max(0, mon.stun - dt);
@@ -403,7 +404,9 @@
       } else { const s2 = Math.min(dd, sp * dt); mon.x += ddx / dd * s2; mon.y += ddy / dd * s2; }
       // last stretch: when in the same corridor and close, lunge straight at you
       if (mon.hunting && eu < 1.2 && mon.stun <= 0 && sp > 0 && (mon.kind !== 'grinner' || mon.moving) && lineOfSight(mon.x, mon.y, p.x, p.y)) { const s3 = sp * dt * 0.8; mon.x += (p.x - mon.x) / eu * s3; mon.y += (p.y - mon.y) / eu * s3; }
-      if (S.invuln <= 0 && eu < 0.45) { caught(mon); return; }
+      // the Face, with your back turned: it closes in and leans over you instead of grabbing you
+      if (S.horror && mon.kind === 'face' && !S.loom && S.invuln <= 0 && mon.hunting && eu < 1.8 && Math.abs(angTo(mon.x, mon.y)) > 1.5 && lineOfSight(p.x, p.y, mon.x, mon.y)) { startLoom(mon); return; }
+      if (S.invuln <= 0 && eu < 0.45 && !(S.loom && S.loom.mon === mon)) { caught(mon); return; }
     }
     S.dread = near <= 7 ? Math.max(0.05, 1 - near / 7) : 0;
     if (S.scaredy) S.dread *= 0.3;
@@ -473,6 +476,45 @@
       return base * (mon.lit ? 0.7 : 1.25);
     }
     return sp;
+  }
+  // ---- The Face looming over you from behind ----
+  const LOOM_TIME = 3.2;
+  function startLoom(mon) {
+    const p = S.player;
+    S.loom = { mon, t: 0, ox: -Math.cos(p.a) * 0.6, oy: -Math.sin(p.a) * 0.6 };
+    Snd.whisper();
+  }
+  // returns true when the loom has ended in a catch
+  function updateLoom(dt) {
+    const L = S.loom, p = S.player, mon = L.mon;
+    L.t += dt;
+    // it stays glued to the spot behind you (it follows you, but not when you turn), so turning around shows it right there
+    const bx = p.x + L.ox, by = p.y + L.oy;
+    mon.x = mon.rx = bx; mon.y = mon.ry = by; mon.stun = 1;
+    const u = Math.min(1, L.t / LOOM_TIME);
+    mon.stare = u * 3.99; mon.pose = Math.floor(mon.stare);
+    Snd.setWail(0.25 + 0.75 * u, 0); Snd.setDread(0.4 + 0.6 * u); Snd.setHeart(0.4 + 0.6 * u);
+    S.dread = 0.3 + 0.7 * u;
+    // turn around and look at it, or wait until it's fully over you: either way it gets you
+    const looked = L.t > 0.4 && Math.abs(angTo(mon.x, mon.y)) < 0.9;
+    if (L.t >= LOOM_TIME || looked) { S.loom = null; caught(mon); return true; }
+    return false;
+  }
+  function drawLoom() {
+    const u = Math.min(1, S.loom.t / LOOM_TIME), e = u * u * (3 - 2 * u);
+    const tex = SP.mon.face[Math.min(3, Math.floor(u * 3.99))].canvas;
+    // darken everything as it blots out the room
+    cx.fillStyle = 'rgba(0,0,0,' + (0.15 + 0.55 * e) + ')'; cx.fillRect(0, 0, VW, VH);
+    const w = Math.max(VW, VH) * (0.55 + 0.75 * e), h = w;
+    const cxp = VW / 2 + Math.sin(S.loom.t * 1.1) * VW * 0.025;
+    const cyp = -h * 0.5 + (h * 0.5 + VH * 0.34) * e; // descends from above your head
+    cx.save(); cx.translate(cxp, cyp); cx.rotate(Math.PI + Math.sin(S.loom.t * 0.8) * 0.06);
+    cx.imageSmoothingEnabled = false; cx.globalAlpha = 0.55 + 0.45 * e;
+    cx.drawImage(tex, -w / 2, -h / 2, w, h);
+    cx.restore(); cx.globalAlpha = 1;
+    // shadow falling across the top of the view
+    const sh = cx.createLinearGradient(0, 0, 0, VH * 0.6); sh.addColorStop(0, 'rgba(0,0,0,' + 0.6 * e + ')'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+    cx.fillStyle = sh; cx.fillRect(0, 0, VW, VH * 0.6);
   }
   // a hunter that has lost you slips around behind you
   function stalk() {
@@ -664,6 +706,7 @@
       cx.fillStyle = r2; cx.fillRect(0, 0, VW, VH);
     }
     drawHand();
+    if (S.loom) drawLoom();
     if (S.showMap) drawMap();
     for (const e of S.effects) if (e.kind === 'bat') { const u = e.t / e.dur; cx.font = '48px serif'; cx.fillText('🦇', -60 + (VW + 120) * u, VH * 0.35 + Math.sin(u * 20) * 24); }
   }
@@ -832,6 +875,7 @@
   }
 
   function caught(mon) {
+    S.loom = null;
     setMode('scare'); S.hit = 1;
     if (S.scaredy) Snd.caught(); else Snd.shriek();
     const jump = !S.scaredy;
