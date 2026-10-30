@@ -356,13 +356,15 @@
     S.nextHunt -= dt;
     if (S.nextHunt <= 0) { S.nextHunt = 18 + Math.random() * 18; wakeOne(S.scaredy ? 'A ghost wants to play' : 'Something is hunting you'); }
 
-    let near = 99, nearMon = null;
+    let near = 99, nearMon = null, seenD = 99, seenMon = null;
     for (const mon of S.monsters) {
       mon.bob += dt * 3; mon.stun = Math.max(0, mon.stun - dt);
       const pd = S.dist[mon.ty * S.maze.W + mon.tx], eu = Math.hypot(mon.x - p.x, mon.y - p.y);
       if (!mon.hunting && (pd >= 0 && pd <= 8 || (eu < 7 && lineOfSight(mon.x, mon.y, p.x, p.y)))) mon.hunting = true;
       if (mon.hunting && pd > 22) mon.hunting = false;
       if (mon.hunting && pd >= 0 && pd < near) { near = pd; nearMon = mon; }
+      // the wail is only audible when nothing blocks the line between you and it
+      if (mon.hunting && eu < 12 && eu < seenD && lineOfSight(p.x, p.y, mon.x, mon.y)) { seenD = eu; seenMon = mon; }
       mon.lit = inBeam(mon.x, mon.y);
       const behind = Math.abs(angTo(mon.x, mon.y)) > 0.75;
       let sp = mon.hunting ? F.speed * (mon.lit ? 0.45 : behind ? 1.2 : 1) : 0.8;
@@ -401,7 +403,7 @@
     if (S.scaredy) S.dread *= 0.3;
     Snd.setHeart(S.dread > 0 && !S.scaredy ? S.dread : 0);
     Snd.setDread(S.dread);
-    Snd.setWail(nearMon && near <= 16 && !S.scaredy ? Math.max(0.08, Math.pow(1 - near / 16, 1.3)) : 0, nearMon ? Math.sin(angTo(nearMon.x, nearMon.y)) : 0);
+    Snd.setWail(seenMon && !S.scaredy ? Math.max(0.1, Math.pow(1 - seenD / 12, 1.2)) : 0, seenMon ? Math.sin(angTo(seenMon.x, seenMon.y)) : 0);
 
     S.nextScare -= dt;
     if (S.nextScare <= 0) { S.nextScare = 45 + Math.random() * 70; ambientScare(); }

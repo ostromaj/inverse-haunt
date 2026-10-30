@@ -131,7 +131,7 @@
     wail.bp.frequency.setTargetAtTime(f * 1.2, t, 0.3);
     wail.vib.frequency.setTargetAtTime(5 + 6 * level, t, 0.3);
     wail.vg.gain.setTargetAtTime(20 + 50 * level, t, 0.3);
-    wail.out.gain.setTargetAtTime(level <= 0 ? 0 : 0.03 + 0.17 * level * level, t, level <= 0 ? 0.08 : 0.2);
+    wail.out.gain.setTargetAtTime(level <= 0 ? 0 : 0.03 + 0.17 * level * level, t, level <= 0 ? 0.05 : 0.12);
     if (wail.pn && pan != null) wail.pn.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)) * 0.85, t, 0.1);
   };
   // the catch: a loud, piercing high scream
