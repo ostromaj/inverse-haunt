@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inverse Haunt answer key</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  html, body { overflow: auto; height: auto; background: var(--page); color: var(--ink); }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 18px 80px; }
+  h1 { font-family: var(--title); font-weight: 400; font-size: 46px; margin: 0 0 6px; color: var(--blood); }
+  h2 { font-family: var(--title); font-weight: 400; font-size: 30px; margin: 40px 0 4px; border-bottom: 2px solid var(--ink); padding-bottom: 4px; }
+  h3 { font-size: 17px; margin: 26px 0 8px; color: var(--ink-soft); }
+  .lead { font-size: 17px; line-height: 1.6; max-width: 70ch; }
+  .q { border: 1px solid var(--page-edge); background: #fbf6ea; padding: 14px 16px; margin: 10px 0; border-radius: 3px; }
+  .q .prompt { font-size: 18px; line-height: 1.55; margin-bottom: 8px; }
+  .q ol { margin: 6px 0; padding-left: 24px; font-size: 17px; line-height: 1.7; }
+  .q li.ok { font-weight: 700; color: var(--right); }
+  .q li.ok::after { content: '  \2714'; }
+  .gopts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .gopts div { text-align: center; font-size: 14px; border: 2px solid transparent; padding: 2px; }
+  .gopts div.ok { border-color: var(--right); font-weight: 700; color: var(--right); }
+  .key { font-size: 17px; margin-top: 6px; }
+  .key b { color: var(--right); }
+  .ex { font-size: 15px; color: var(--ink-soft); margin-top: 6px; line-height: 1.55; }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  .btn.ink { background: var(--ink); color: var(--page); }
+  a { color: var(--blood); }
+  .visual { justify-content: flex-start; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Inverse Haunt answer key</h1>
+  <p class="lead">Every question in the game comes from one of the generators below, with fresh numbers each time. Here are three random samples of each, with the answer and the explanation students see. Every generator is also checked by an automated test that re-solves thousands of versions numerically.</p>
+  <p class="lead">Floor 1 uses level 1 questions, floor 2 mixes levels 1 and 2, floor 3 mixes 2 and 3, floor 4 mixes 3 and 4, and the Attic is mostly level 4.</p>
+  <div class="bar"><button class="btn ink" id="again" type="button">New samples</button><a href="index.html">Back to the game</a></div>
+  <div id="out"></div>
+</main>
+<script src="js/mathcore.js"></script>
+<script src="js/questions.js"></script>
+<script src="js/render.js"></script>
+<script>
+(function () {
+  const LEVELS = { 1: 'Level 1: diagrams and notation', 2: 'Level 2: inverse values, one-to-one, swaps', 3: 'Level 3: finding inverses and graphs', 4: 'Level 4: hard and tricky' };
+  const TYPE = { mc: 'Multiple choice', num: 'Type a number', expr: 'Type an expression', point: 'Click the graph' };
+  function draw(seed) {
+    const out = document.getElementById('out'); out.innerHTML = '';
+    let tier = 0;
+    for (const g of Questions.GENERATORS.slice().sort((a, b) => a.tier - b.tier)) {
+      if (g.tier !== tier) { tier = g.tier; const h = document.createElement('h2'); h.textContent = LEVELS[tier]; out.appendChild(h); }
+      const rng = MathCore.RNG(seed + g.id);
+      const first = Questions.build(g, rng);
+      const h3 = document.createElement('h3'); h3.textContent = first.topicName + ' (' + TYPE[first.type] + ')'; out.appendChild(h3);
+      for (let i = 0; i < 3; i++) {
+        const q = i === 0 ? first : Questions.build(g, rng);
+        const box = document.createElement('div'); box.className = 'q';
+        box.innerHTML = '<div class="prompt">' + q.prompt + '</div>';
+        const v = Render.visual(q.visual, 240);
+        if (v) { const w = document.createElement('div'); w.className = 'visual'; w.appendChild(v); box.appendChild(w); }
+        if (q.type === 'mc' && q.options.some(o => o.visual)) {
+          const w = document.createElement('div'); w.className = 'gopts';
+          q.options.forEach((o, k) => { const d = document.createElement('div'); if (k === q.correct) d.className = 'ok'; d.textContent = o.html; d.prepend(Render.visual(o.visual, 160)); w.appendChild(d); });
+          box.appendChild(w);
+        } else if (q.type === 'mc') {
+          box.insertAdjacentHTML('beforeend', '<ol type="A">' + q.options.map((o, k) => '<li class="' + (k === q.correct ? 'ok' : '') + '">' + o.html + '</li>').join('') + '</ol>');
+        } else {
+          box.insertAdjacentHTML('beforeend', '<div class="key">Answer: <b>' + Render.answerHtml(q) + '</b>' + (q.type === 'expr' ? ' (any equivalent form is accepted)' : '') + '</div>');
+        }
+        box.insertAdjacentHTML('beforeend', '<div class="ex">' + q.explain + '</div>');
+        out.appendChild(box);
+      }
+    }
+  }
+  let n = 0;
+  draw('bank' + Date.now());
+  document.getElementById('again').onclick = () => draw('bank' + Date.now() + (n++));
+})();
+</script>
+</body>
+</html>

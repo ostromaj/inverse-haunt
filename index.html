@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inverse Haunt</title>
+<meta name="description" content="A haunted-house maze where the only way out is inverse functions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👻</text></svg>">
+</head>
+<body>
+<canvas id="game" aria-label="Haunted maze"></canvas>
+
+<div id="hud">
+  <div class="hud-l">
+    <div class="floorname" id="hudFloor">The Cellar</div>
+    <div class="hudline"><span id="hudKeys">Keys 0 / 3</span></div>
+    <div class="hudline"><span class="candles" id="hudCandles" aria-label="Lives"></span></div>
+    <div class="hudline"><span>Flashlight</span><span class="battery" id="hudBatt"><i></i></span></div>
+  </div>
+  <div class="hud-r">
+    <div class="score" id="hudScore">0</div>
+    <div class="hudline" id="hudTime">0:00</div>
+    <div class="hudline" id="hudStreak"></div>
+    <button id="pauseBtn" type="button">Pause (Esc)</button>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="lookHint">Click to look around with the mouse</div>
+
+<!-- title -->
+<section id="title" class="screen on">
+  <div class="title-wrap">
+    <h1>Inverse<br><span class="inv">H</span>aunt</h1>
+    <p class="tag">Every monster is a function. Undo it to escape.</p>
+    <div class="panel">
+      <div class="row">
+        <label class="field">Your name
+          <input id="nameIn" maxlength="24" autocomplete="off" placeholder="So we know who escaped">
+        </label>
+        <label class="field">Room code (optional)
+          <input id="codeIn" maxlength="16" autocomplete="off" placeholder="e.g. PUMPKIN7">
+        </label>
+      </div>
+      <p class="hint">Same room code = same haunted house and same questions. Race your friends: highest score wins, fastest time breaks ties.</p>
+      <div class="row" style="margin-top:14px">
+        <label class="toggle"><input type="checkbox" id="scaredyIn"> Scaredy-cat mode (no jumpscares, cute monsters)</label>
+      </div>
+      <div class="row">
+        <label class="toggle"><input type="checkbox" id="muteIn"> Mute sound</label>
+      </div>
+      <div class="row" id="teacherRow" hidden>
+        <label class="field">Start on floor
+          <select id="floorIn" style="padding:8px;background:var(--void);color:var(--page);border:1px solid var(--wall-hi)">
+            <option value="0">1: Cellar</option><option value="1">2: Kitchen</option><option value="2">3: Library</option><option value="3">4: Nursery</option><option value="4">5: Attic</option>
+          </select>
+        </label>
+      </div>
+      <button class="btn big" id="startBtn" type="button">Enter the house</button>
+    </div>
+    <p class="controls"><kbd>W</kbd><kbd>S</kbd> walk, <kbd>A</kbd><kbd>D</kbd> sidestep, mouse or <kbd>←</kbd><kbd>→</kbd> to turn, <kbd>M</kbd> map.<br>Grab 3 keys, then find the door. They hunt you. Your flashlight slows them down, and they move faster when you aren't looking.<br>If one catches you, solve its problem to destroy it.</p>
+    <p class="teacher"><a href="bank.html">Teacher answer key: sample every question type</a></p>
+  </div>
+</section>
+
+<!-- between floors -->
+<section id="between" class="screen dark">
+  <div class="mid">
+    <h2 id="btTitle">The Cellar</h2>
+    <p id="btText"></p>
+    <button class="btn big" id="btBtn" type="button" style="max-width:320px">Go in</button>
+  </div>
+</section>
+
+<!-- pause -->
+<section id="pause" class="screen dark">
+  <div class="mid">
+    <h2>Paused</h2>
+    <div class="panel" style="text-align:left">
+      <div class="row"><label class="toggle"><input type="checkbox" id="scaredyPause"> Scaredy-cat mode</label></div>
+      <div class="row"><label class="toggle"><input type="checkbox" id="mutePause"> Mute sound</label></div>
+      <div class="row"><button class="btn" id="resumeBtn" type="button">Resume</button><button class="btn ghost" id="quitBtn" type="button">Quit to title</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- question -->
+<section id="qwrap" class="screen" role="dialog" aria-modal="true" aria-labelledby="qWhy">
+  <div class="card" id="qcard"></div>
+</section>
+
+<!-- end -->
+<section id="end" class="screen dark">
+  <div class="card endcard" id="endcard"></div>
+</section>
+
+<div id="scare" aria-hidden="true"><canvas id="scareCanvas"></canvas></div>
+<div id="flash" aria-hidden="true"></div>
+
+<script src="js/mathcore.js"></script>
+<script src="js/questions.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
