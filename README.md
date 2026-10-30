@@ -28,7 +28,8 @@ Controls: W/S walk, A/D sidestep, mouse (click to lock) or arrow keys to turn, M
 - Lose all 5 candles and the floor restarts.
 - Ghosts hunt you: idle ones wake up over time and when you grab keys. Your flashlight slows them down; they move faster when you aren't looking. A hunting ghost lets out a sustained high-pitched wail that gets louder, higher and more frantic as it closes in (panned left/right so you can tell which way it's coming from), plus static, a red haze and a heartbeat. Getting caught triggers a loud shriek.
 - Batteries recharge the flashlight.
-- Jumpscares are random. **Scaredy-cat mode** turns them off and makes the monsters cute.
+- **Every catch is a jumpscare** (the monster's own face, full screen, with a shriek). A few extra random scares happen while exploring. **Scaredy-cat mode** turns them all off and makes the monsters cute.
+- Monsters: **the Grinner** moves like a broken puppet: it freezes, then lurches forward in bursts with its head snapping to new angles and its joints cracking. Shine your light on it and it locks up and twitches. **The Shade** is a hunched shadow that is mostly mouth.
 - **Room codes:** everyone who types the same code gets the same house and the same questions, so a class can race (highest score wins, time breaks ties).
 - Teachers can add `?teacher=1` to the URL to start on any floor.
 

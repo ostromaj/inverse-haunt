@@ -106,7 +106,7 @@
 
   function sprites() {
     const MD = window.Monsters.D, mon = {};
-    for (const k in MD) mon[k] = [0, 1].map(fr => canvasTex(MD[k].w, MD[k].h, (g) => MD[k].draw(g, fr), MD[k].em ? (g) => MD[k].em(g, fr) : null));
+    for (const k in MD) mon[k] = Array.from({ length: MD[k].frames || 2 }, (_, fr) => fr).map(fr => canvasTex(MD[k].w, MD[k].h, (g) => MD[k].draw(g, fr), MD[k].em ? (g) => MD[k].em(g, fr) : null));
     const cuteGhost = (frame) => canvasTex(64, 96, (g) => {
       g.fillStyle = '#f6f6ff'; g.beginPath(); g.arc(32, 34, 22, Math.PI, 0); g.lineTo(54, 86);
       for (let i = 0; i < 4; i++) g.quadraticCurveTo(54 - i * 11 - 5.5, 76 + ((i + frame) % 2) * 10, 54 - (i + 1) * 11, 86);
@@ -233,7 +233,7 @@
     updateHud();
   }
   function makeMonster(tx, ty, i) {
-    return { x: tx + 0.5, y: ty + 0.5, tx, ty, ptx: tx, pty: ty, kind: window.Monsters.SETS[MSET][i % window.Monsters.SETS[MSET].length], bob: Math.random() * 6, hunting: false, stun: 0 };
+    return { x: tx + 0.5, y: ty + 0.5, tx, ty, ptx: tx, pty: ty, kind: window.Monsters.SETS[MSET][i % window.Monsters.SETS[MSET].length], bob: Math.random() * 6, hunting: false, stun: 0, pose: 0, jt: 0, moving: false, twitch: 0 };
   }
   function respawnFar(mon) {
     const d = S.dist, W = S.maze.W, opts = [];
@@ -275,11 +275,11 @@
   // ---------- update ----------
   const RAD = 0.22;
   const blocked = (x, y) => wallAt(x - RAD, y - RAD) || wallAt(x + RAD, y - RAD) || wallAt(x - RAD, y + RAD) || wallAt(x + RAD, y + RAD);
-  const beamRange = () => 3.2 + 4.3 * Math.min(1, S.battery / 40);
+  const beamRange = () => 4.6 + 5.4 * Math.min(1, S.battery / 40);
   function angTo(x, y) { const p = S.player; let a = Math.atan2(y - p.y, x - p.x) - p.a; return Math.atan2(Math.sin(a), Math.cos(a)); }
   function inBeam(x, y) {
     const p = S.player, d = Math.hypot(x - p.x, y - p.y);
-    return S.blackout <= 0 && d < beamRange() && Math.abs(angTo(x, y)) < 0.33 && lineOfSight(p.x, p.y, x, y);
+    return S.blackout <= 0 && d < beamRange() && Math.abs(angTo(x, y)) < 0.4 && lineOfSight(p.x, p.y, x, y);
   }
 
   function update(dt) {
@@ -337,6 +337,22 @@
       mon.lit = inBeam(mon.x, mon.y);
       const behind = Math.abs(angTo(mon.x, mon.y)) > 0.75;
       let sp = mon.hunting ? F.speed * (mon.lit ? 0.45 : behind ? 1.2 : 1) : 0.8;
+      if (mon.kind === 'grinner') {
+        // broken-puppet motion: dead still, then a sudden lurch with a head snap
+        mon.jt = (mon.jt || 0) - dt;
+        if (mon.jt <= 0) {
+          mon.moving = !mon.moving;
+          if (mon.moving) {
+            mon.jt = 0.12 + Math.random() * 0.22;
+            mon.pose = (mon.pose + 1 + Math.floor(Math.random() * 4)) % 5;
+            if (eu < 10) Snd.crack((1 - eu / 10) * 0.9, Math.sin(angTo(mon.x, mon.y)));
+          } else mon.jt = mon.lit ? 0.7 + Math.random() * 0.9 : 0.15 + Math.random() * 0.5;
+        }
+        if (mon.lit && !mon.moving && Math.random() < dt * 3) { mon.pose = (mon.pose + 1 + Math.floor(Math.random() * 4)) % 5; mon.twitch = 0.08; }
+        mon.twitch = Math.max(0, (mon.twitch || 0) - dt);
+        const base = mon.hunting ? F.speed * (behind ? 1.2 : 1) : 0.8;
+        sp = mon.moving ? base * (mon.lit ? 1.1 : 2.6) : 0;
+      }
       if (S.scaredy) sp *= 0.8;
       if (mon.stun > 0) sp = 0;
       const gx = mon.tx + 0.5, gy = mon.ty + 0.5, ddx = gx - mon.x, ddy = gy - mon.y, dd = Math.hypot(ddx, ddy);
@@ -349,7 +365,7 @@
         mon.ptx = mon.tx; mon.pty = mon.ty; mon.tx = next[0]; mon.ty = next[1];
       } else { const s2 = Math.min(dd, sp * dt); mon.x += ddx / dd * s2; mon.y += ddy / dd * s2; }
       // last stretch: when in the same corridor and close, lunge straight at you
-      if (mon.hunting && eu < 1.2 && mon.stun <= 0 && lineOfSight(mon.x, mon.y, p.x, p.y)) { const s3 = sp * dt * 0.8; mon.x += (p.x - mon.x) / eu * s3; mon.y += (p.y - mon.y) / eu * s3; }
+      if (mon.hunting && eu < 1.2 && mon.stun <= 0 && (mon.kind !== 'grinner' || mon.moving) && lineOfSight(mon.x, mon.y, p.x, p.y)) { const s3 = sp * dt * 0.8; mon.x += (p.x - mon.x) / eu * s3; mon.y += (p.y - mon.y) / eu * s3; }
       if (S.invuln <= 0 && eu < 0.45) { caught(mon); return; }
     }
     S.dread = near <= 7 ? Math.max(0.05, 1 - near / 7) : 0;
@@ -391,19 +407,19 @@
     const flashOn = S.blackout <= 0;
     let flash = flashOn ? (S.battery < 15 && Math.random() < 0.12 ? 0.25 : 1) : 0;
     const ccx = RW / 2 + Math.cos(p.bob * 0.5) * 6 * p.moving, ccy = RH / 2 + 8 + Math.abs(Math.sin(p.bob)) * 4 * p.moving;
-    const rx = RW * 0.36, ry = RH * 0.62;
+    const rx = RW * 0.44, ry = RH * 0.72;
     for (let y = 0; y < RH; y++) {
       const ny = (y - ccy) / ry, ny2 = ny * ny, row = y * RW;
       for (let x = 0; x < RW; x++) {
         const nx = (x - ccx) / rx; let c = 1 - (nx * nx + ny2);
         if (c <= 0) { cone[row + x] = 0; continue; }
-        cone[row + x] = (c * (0.35 + 0.65 * c) * 255 * flash) | 0;
+        cone[row + x] = (c * (0.5 + 0.5 * c) * 255 * flash) | 0;
       }
     }
     const range = beamRange();
-    const amb0 = S.scaredy ? 60 : 16, ambR = S.scaredy ? 7 : 2.6, ambFloor = S.scaredy ? 16 : 2;
+    const amb0 = S.scaredy ? 60 : 24, ambR = S.scaredy ? 7 : 3, ambFloor = S.scaredy ? 16 : 3;
     const ambient = (d) => (d < ambR ? (amb0 * (1 - d / ambR)) | 0 : 0) + ambFloor;
-    const fall = (d) => { const u = 1 - d / range; return u > 0 ? (300 * u * Math.sqrt(u)) | 0 : 0; };
+    const fall = (d) => { const u = 1 - d / range; return u > 0 ? (430 * u * Math.sqrt(u)) | 0 : 0; };
 
     // floor + ceiling
     const r0x = dirX - plX, r0y = dirY - plY, r1x = dirX + plX, r1y = dirY + plY;
@@ -462,9 +478,12 @@
       const fr = Math.floor(mon.bob * 0.8) % 2, d = Math.hypot(mon.x - p.x, mon.y - p.y);
       let tex, size, glow;
       if (S.scaredy) { const pk = mon.kind === 'shade' || mon.kind === 'hollow'; tex = pk ? SP.pumpkin[0] : SP.cute[fr]; size = pk ? 0.45 : 0.7; glow = 70; }
-      else { tex = SP.mon[mon.kind][fr]; size = window.Monsters.D[mon.kind].size; glow = GLOW[mon.kind] + (mon.hunting ? 10 : 0); }
+      else { tex = SP.mon[mon.kind][mon.kind === 'grinner' ? mon.pose : fr]; size = window.Monsters.D[mon.kind].size; glow = GLOW[mon.kind] + (mon.hunting ? 10 : 0); }
       const jit = !S.scaredy && mon.hunting && d < 3 ? (Math.random() - 0.5) * 0.06 * (3 - d) : 0;
-      list.push({ x: mon.x + jit, y: mon.y + jit, tex, size, lift: S.scaredy ? 0.1 + Math.sin(mon.bob) * 0.05 : 0.02 + Math.sin(mon.bob) * 0.03, glow, mon: true });
+      let lift = S.scaredy ? 0.1 + Math.sin(mon.bob) * 0.05 : 0.02 + Math.sin(mon.bob) * 0.03, gx = 0;
+      if (mon.kind === 'grinner' && !S.scaredy) { lift = mon.moving ? Math.random() * 0.04 : 0; if (mon.twitch > 0) gx = (Math.random() - 0.5) * 0.12; }
+      const sx2 = -Math.sin(p.a) * gx, sy2 = Math.cos(p.a) * gx;
+      list.push({ x: mon.x + jit + sx2, y: mon.y + jit + sy2, tex, size, lift, glow, mon: true });
     }
     for (const e of S.effects) if (e.kind === 'figure') list.push({ x: e.x, y: e.y, tex: SP.figure, size: 1.05, lift: 0, glow: 0 });
     for (const s of list) s.d = (s.x - p.x) ** 2 + (s.y - p.y) ** 2;
@@ -674,7 +693,7 @@
   function caught(mon) {
     setMode('scare'); S.hit = 1;
     if (S.scaredy) Snd.caught(); else Snd.shriek();
-    const jump = !S.scaredy && Math.random() < 0.55;
+    const jump = !S.scaredy;
     const go = () => askQuestion(S.scaredy ? 'Boo! A friendly ghost wants a math problem' : 'It caught you', (correct) => {
       if (correct) {
         S.flashT = 0.7; Snd.banish();
@@ -741,7 +760,7 @@
     const s = Math.min(w, h) * (0.6 + u * 0.7) * (1 + (Math.random() - 0.5) * 0.05);
     const MD = window.Monsters.D[kind];
     if (MD && MD.face && kind !== 'ghost') {
-      const tex = SP.mon[kind][Math.random() < 0.5 ? 0 : 1].canvas, [fx, fy, fw, fh] = MD.face;
+      const tex = SP.mon[kind][Math.floor(Math.random() * SP.mon[kind].length)].canvas, [fx, fy, fw, fh] = MD.face;
       const sw = fw * tex.width, sh = fh * tex.height, k = Math.min(w / sw, h / sh) * (1.05 + u * 0.6);
       g.imageSmoothingEnabled = false;
       g.drawImage(tex, fx * tex.width, fy * tex.height, sw, sh, w / 2 - sw * k / 2 + (Math.random() - 0.5) * 30, h / 2 - sh * k / 2 + (Math.random() - 0.5) * 30, sw * k, sh * k);

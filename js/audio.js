@@ -153,6 +153,23 @@
     sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(0.2, t + 0.01); sg.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
     sh.connect(sg); sg.connect(out); sh.start(t); sh.stop(t + 1.2);
   };
+  // joints cracking: a few sharp clicks, panned toward the source
+  A.crack = (vol, pan) => {
+    if (!ctx || A.gentle || vol <= 0) return;
+    const out = ctx.createGain(); out.gain.value = Math.min(1, vol);
+    const pn = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    if (pn) { pn.pan.value = Math.max(-1, Math.min(1, pan || 0)); out.connect(pn); pn.connect(master); } else out.connect(master);
+    const n = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      const t = ctx.currentTime + i * (0.03 + Math.random() * 0.05), len = Math.floor(ctx.sampleRate * 0.03);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / len, 6);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1200 + Math.random() * 1800;
+      const g = ctx.createGain(); g.gain.value = 0.9;
+      src.connect(hp); hp.connect(g); g.connect(out); src.start(t);
+    }
+  };
   A.step = () => { noise(0.06, 0.05, 400, 1); };
   // continuous dread layer: low grinding moan + breathy noise, scaled by how close a hunter is
   let dread = null;

@@ -127,8 +127,10 @@
 
   // THE GRINNER — an emaciated thing with a smile far too wide for its face.
   // In the dark you only see the teeth and two pinprick eyes.
-  D.grinner = { w: 96, h: 192, size: 1.05, draw(g, frame) {
-    const f = frame ? 1.5 : -1.5;
+  // poses: [head tilt, arm sway, extra mouth gape, head drop]
+  const GP = [[-0.18, -1.5, 0, 0], [0.42, 2.5, 3, 2], [-0.62, -3, 1, 3], [0.12, 1.5, 5, -1], [-0.9, 0, 2, 5]];
+  D.grinner = { w: 96, h: 192, size: 1.05, frames: 5, draw(g, frame) {
+    const P = GP[frame % GP.length], f = P[1];
     const skin = '#a8a49a', dark = '#6c685f';
     g.lineCap = 'round';
     // legs, bent
@@ -148,8 +150,8 @@
     g.strokeStyle = dark; g.lineWidth = 1.3;
     for (const [hx, s] of [[20 + f, -1], [76 - f, 1]]) for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(hx, 178); g.lineTo(hx + s * (k - 1.5) * 3.5, 190); g.stroke(); }
     // neck, head long and narrow, tipped to one side
-    g.strokeStyle = skin; g.lineWidth = 6; g.beginPath(); g.moveTo(48, 72); g.lineTo(47, 58); g.stroke();
-    g.save(); g.translate(47, 34); g.rotate(-0.18 + frame * 0.04);
+    g.strokeStyle = skin; g.lineWidth = 6; g.beginPath(); g.moveTo(48, 72); g.lineTo(47 + P[0] * 5, 58 + P[3]); g.stroke();
+    g.save(); g.translate(47 + P[0] * 6, 34 + P[3]); g.rotate(P[0]);
     const hg = g.createRadialGradient(-3, -8, 3, 0, 0, 30); hg.addColorStop(0, '#d2cdc2'); hg.addColorStop(0.7, '#8f8b82'); hg.addColorStop(1, '#4e4a44');
     g.fillStyle = hg; g.beginPath(); g.ellipse(0, 0, 17, 27, 0, 0, 7); g.fill();
     // sunken cheeks and brow
@@ -158,17 +160,18 @@
     g.fillStyle = '#060303'; g.beginPath(); g.ellipse(-7, -10, 5, 6.5, 0.25, 0, 7); g.ellipse(7, -10, 5, 6.5, -0.25, 0, 7); g.fill();
     // the grin, wider than the head: corners split up into the cheeks
     g.fillStyle = '#080303';
-    g.beginPath(); g.moveTo(-23, -1); g.quadraticCurveTo(0, 30 + frame * 2, 23, -1); g.quadraticCurveTo(0, 13, -23, -1); g.fill();
+    g.beginPath(); g.moveTo(-23, -1); g.quadraticCurveTo(0, 30 + P[2], 23, -1); g.quadraticCurveTo(0, 13, -23, -1); g.fill();
     g.strokeStyle = 'rgba(20,8,8,.85)'; g.lineWidth = 1.1;
     g.beginPath(); g.moveTo(-23, -1); g.lineTo(-25, -7); g.moveTo(23, -1); g.lineTo(25, -7); g.stroke();
     g.restore();
   }, em(g, frame) {
-    g.save(); g.translate(47, 34); g.rotate(-0.18 + frame * 0.04);
+    const P = GP[frame % GP.length];
+    g.save(); g.translate(47 + P[0] * 6, 34 + P[3]); g.rotate(P[0]);
     g.fillStyle = '#ffffff'; g.fillRect(-7.6, -10, 1.3, 1.3); g.fillRect(6.4, -10, 1.3, 1.3);
     g.fillStyle = '#efe9d8';
     const q = (t, cy) => [-23 + 46 * t, (1 - t) * (1 - t) * -1 + 2 * (1 - t) * t * cy + t * t * -1];
     for (let i = 1; i < 18; i++) { const [x, y] = q(i / 18, 13); g.beginPath(); g.moveTo(x - 1.2, y - 0.6); g.lineTo(x, y + 4.2); g.lineTo(x + 1.2, y - 0.6); g.fill(); }
-    for (let i = 1; i < 18; i++) { const [x, y] = q(i / 18, 30 + frame * 2); g.beginPath(); g.moveTo(x - 1.2, y + 0.6); g.lineTo(x, y - 4.2); g.lineTo(x + 1.2, y + 0.6); g.fill(); }
+    for (let i = 1; i < 18; i++) { const [x, y] = q(i / 18, 30 + P[2]); g.beginPath(); g.moveTo(x - 1.2, y + 0.6); g.lineTo(x, y - 4.2); g.lineTo(x + 1.2, y + 0.6); g.fill(); }
     g.restore();
   }, face: [0.2, 0.0, 0.6, 0.34] };
 
