@@ -149,7 +149,7 @@
   const SP = sprites();
   const MSET = (location.search.match(/[?&]monsters=(classic|new|main)/) || [0, 'main'])[1];
   const roster = () => window.Monsters.SETS[S.horror ? 'horror' : MSET];
-  const GLOWH = { spider: 6, tall: 4, hanger: 5, crawler: 14, mass: 6, face: 10 };
+  const GLOWH = { spider: 6, tall: 4, hanger: 5, crawler: 8, mass: 6, face: 10 };
   const GLOW = { ghost: 22, shade: 0, widow: 24, grinner: 6, hollow: 3 };
 
   // ---------- maze ----------
@@ -434,7 +434,32 @@
   function horrorMove(mon, dt, eu, sp, F) {
     const base = (mon.hunting ? F.speed * 1.15 : 0.9);
     mon.jt -= dt; mon.gl = Math.max(0, mon.gl - dt);
-    if (mon.kind === 'spider' || mon.kind === 'crawler') {
+    if (mon.kind === 'crawler') {
+      // drags itself in frantic bursts, limbs pumping; then dead still while its head twists sideways and looks at you.
+      // close up it rears back on its arms and lunges.
+      const P = S.player, toP = Math.atan2(P.y - mon.y, P.x - mon.x);
+      mon.anim = (mon.anim || 0) + dt;
+      if (mon.jt <= 0) {
+        mon.moving = !mon.moving;
+        mon.jt = mon.moving ? 0.35 + Math.random() * 0.55 : 0.25 + Math.random() * (mon.lit ? 1.1 : 0.6);
+        if (!mon.moving) {
+          mon.rollT = (Math.random() < 0.5 ? -1 : 1) * (0.9 + Math.random() * 0.8); // the head wrenches sideways
+          if (eu < 10) Snd.crack(Math.min(1, 1.2 - eu / 10), Math.sin(angTo(mon.x, mon.y)));
+        } else mon.rollT = (Math.random() - 0.5) * 0.4;
+      }
+      mon.phase = (mon.phase || 0) + dt * (mon.moving ? 13 : 0.6);
+      mon.roll = (mon.roll || 0) + ((mon.rollT || 0) - (mon.roll || 0)) * Math.min(1, dt * (mon.moving ? 6 : 22));
+      const goal = mon.moving ? Math.atan2(mon.ty + 0.5 - mon.y, mon.tx + 0.5 - mon.x) : toP;
+      mon.yaw = mon.yaw == null ? goal : mon.yaw + Math.atan2(Math.sin(goal - mon.yaw), Math.cos(goal - mon.yaw)) * Math.min(1, dt * (mon.moving ? 9 : 3));
+      const rel = Math.atan2(Math.sin(toP - mon.yaw), Math.cos(toP - mon.yaw));
+      mon.look = -Math.max(-1.7, Math.min(1.7, rel));
+      mon.rear = (mon.rear || 0) + (((eu < 2.6 && mon.hunting) ? 1 : 0) - (mon.rear || 0)) * Math.min(1, dt * 3);
+      mon.lunge = (mon.lunge || 0) + (((eu < 1.3 && mon.hunting) ? 1 : 0) - (mon.lunge || 0)) * Math.min(1, dt * 6);
+      mon.jaw = (mon.jaw || 0) + (((!mon.moving || eu < 2.5) ? 1 : 0.2) - (mon.jaw || 0)) * Math.min(1, dt * 4);
+      if (Math.random() < dt * 0.8) mon.gl = 0.1;
+      return mon.moving ? base * (mon.lit ? 1.25 : 2.4) : 0;
+    }
+    if (mon.kind === 'spider') {
       // scuttling bursts with limbs flickering, then dead still while the head wrenches around
       if (mon.jt <= 0) {
         mon.moving = !mon.moving;
@@ -462,7 +487,12 @@
       return base * 1.7;
     }
     if (mon.kind === 'mass') {
-      // a slow heave that never stops; it shudders when close
+      // a slow heave that never stops; arms all reach for you when it's close; it shudders
+      const P = S.player, toP = Math.atan2(P.y - mon.y, P.x - mon.x);
+      mon.anim = (mon.anim || 0) + dt * (eu < 3 ? 1.8 : 1);
+      mon.yaw = mon.yaw == null ? toP : mon.yaw + Math.atan2(Math.sin(toP - mon.yaw), Math.cos(toP - mon.yaw)) * Math.min(1, dt * 2);
+      mon.reach = (mon.reach || 0) + (Math.max(0, Math.min(1, 1 - (eu - 0.8) / 3)) - (mon.reach || 0)) * Math.min(1, dt * 3);
+      mon.scream = mon.reach;
       mon.ft = (mon.ft || 0) - dt;
       if (mon.ft <= 0) { mon.pose = (mon.pose + 1) % 4; mon.ft = 0.18 + Math.random() * 0.2; }
       if (eu < 4 && Math.random() < dt * 4) mon.gl = 0.06;
@@ -538,6 +568,41 @@
     const d = S.dist || bfs(Math.floor(S.player.x), Math.floor(S.player.y));
     idle.sort((a, b) => d[a.ty * S.maze.W + a.tx] - d[b.ty * S.maze.W + b.tx]);
     idle[0].hunting = true; setTimeout(() => { if (S.mode === 'play') { toast(msg); Snd.whisper(); } }, 900);
+  }
+
+  // ---------- baked 3D monsters (tools/bake_monsters.py) ----------
+  // each sheet: rows = 8 view angles around the monster, cols = animation frames
+  const BK = {};
+  (function loadBaked() {
+    const meta = window.BAKED_MONSTERS || {};
+    for (const kind in meta) {
+      const m = meta[kind], img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+        const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
+        const cells = [];
+        for (let a = 0; a < m.angles; a++) {
+          cells.push([]);
+          for (let f = 0; f < m.frames; f++) {
+            const d = g.getImageData(f * m.cw, a * m.ch, m.cw, m.ch), px = new Uint32Array(d.data.buffer.slice(0)), em = new Uint8Array(m.cw * m.ch);
+            for (let i = 0; i < em.length; i++) { const al = d.data[i * 4 + 3]; em[i] = al > 200 && al < 254 ? 1 : 0; if (al > 0) px[i] |= 0xff000000; }
+            cells[a].push({ w: m.cw, h: m.ch, px, em });
+          }
+        }
+        BK[kind] = { m, cells, scare: null };
+        if (m.scare) { const si = new Image(); si.onload = () => { BK[kind].scare = si; }; si.src = 'assets/monsters/' + kind + '_scare.png'; }
+      };
+      img.src = 'assets/monsters/' + kind + '.png';
+    }
+  })();
+  function bakedCell(mon) {
+    const B = BK[mon.kind]; if (!B) return null;
+    const p = S.player, rel = Math.atan2(p.y - mon.y, p.x - mon.x) - (mon.yaw || 0);
+    const a = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8;
+    let f;
+    if (mon.kind === 'crawler') f = mon.moving ? Math.floor(((mon.phase || 0) / (Math.PI * 2)) * 6) % 6 : ((mon.roll || 0) > 0 ? 6 : 7);
+    else f = Math.floor((mon.anim || 0) * 4) % B.m.frames;
+    return { tex: B.cells[a][(f + B.m.frames) % B.m.frames], m: B.m };
   }
 
   // ---------- rendering (raycaster) ----------
@@ -639,6 +704,15 @@
       let lift = S.scaredy ? 0.1 + Math.sin(mon.bob) * 0.05 : 0.02 + Math.sin(mon.bob) * 0.03, gx = 0;
       if (mon.kind === 'grinner' && !S.scaredy) { lift = mon.moving ? Math.random() * 0.04 : 0; if (mon.twitch > 0) gx = (Math.random() - 0.5) * 0.12; }
       const sx2 = -Math.sin(p.a) * gx, sy2 = Math.cos(p.a) * gx;
+      const bc = S.horror && !S.scaredy ? bakedCell(mon) : null;
+      if (bc) {
+        let mx3 = mon.rx, my3 = mon.ry;
+        if (mon.gl > 0) { const k = (Math.random() - 0.5) * 0.3; mx3 += -Math.sin(p.a) * k; my3 += Math.cos(p.a) * k; }
+        mon.rt -= 1 / 60;
+        if (mon.rt <= 0) { mon.rx = mon.x; mon.ry = mon.y; mon.rt = 0.05 + Math.random() * 0.08; }
+        list.push({ x: mx3, y: my3, tex: bc.tex, size: bc.m.worldH, lift: bc.m.lift, glow: GLOWH[mon.kind] || 0, mon: true });
+        continue;
+      }
       let mx = mon.x, my = mon.y;
       if (S.horror && !S.scaredy) {
         // stop-motion: the drawn position only catches up in jumps
@@ -942,6 +1016,7 @@
   function drawFace(g, w, h, u, kind) {
     g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
     const s = Math.min(w, h) * (0.6 + u * 0.7) * (1 + (Math.random() - 0.5) * 0.05);
+    if (BK[kind] && BK[kind].scare) { drawBakedScare(g, w, h, u, kind); return; }
     const MD = window.Monsters.D[kind];
     if (MD && MD.face && kind !== 'ghost') {
       const tex = SP.mon[kind][Math.floor(Math.random() * SP.mon[kind].length)].canvas, [fx, fy, fw, fh] = MD.face;
@@ -972,6 +1047,16 @@
     const v = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.7);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.95)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
     g.fillStyle = 'rgba(255,255,255,.07)'; for (let i = 0; i < 160; i++) g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+  }
+  function drawBakedScare(g, w, h, u, kind) {
+    const B = BK[kind], sc = B.m.scare, fr = Math.min(sc.frames - 1, Math.floor(u * sc.frames * 1.4));
+    g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+    g.imageSmoothingEnabled = false;
+    const k = Math.max(w / sc.w, h / sc.h) * (1.0 + u * 0.45), dw = sc.w * k, dh = sc.h * k;
+    const jx = (Math.random() - 0.5) * 26, jy = (Math.random() - 0.5) * 26;
+    g.drawImage(B.scare, fr * sc.w, 0, sc.w, sc.h, (w - dw) / 2 + jx, (h - dh) / 2 + jy, dw, dh);
+    const v = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.85)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
   }
   function ambientScare() {
     if (S.scaredy) { S.effects.push({ kind: 'bat', t: 0, dur: 2.2 }); Snd.squeak(); return; }
@@ -1036,5 +1121,5 @@
   }
   requestAnimationFrame(loop);
 
-  window.__haunt = { S, startFloor, askQuestion, FLOORS, setMode };
+  window.__haunt = { S, startFloor, askQuestion, FLOORS, setMode, jumpscare };
 })();

@@ -1,0 +1,1 @@
+window.BAKED_MONSTERS = {"crawler": {"cw": 128, "ch": 80, "frames": 8, "angles": 8, "worldW": 1.15, "worldH": 0.72, "lift": -0.16, "scare": {"w": 240, "h": 150, "frames": 3}}, "mass": {"cw": 128, "ch": 128, "frames": 6, "angles": 8, "worldW": 1.2, "worldH": 1.2, "lift": -0.12, "scare": {"w": 240, "h": 150, "frames": 3}}};
