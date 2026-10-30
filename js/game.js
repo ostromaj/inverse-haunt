@@ -56,7 +56,7 @@
       g.drawImage(e, 0, 0);
     }
     const d = g.getImageData(0, 0, w, h);
-    return { w, h, px: new Uint32Array(d.data.buffer.slice(0)), em };
+    return { w, h, px: new Uint32Array(d.data.buffer.slice(0)), em, canvas: c };
   }
   function seeded(seed) { const r = M.RNG(seed); return () => r.next(); }
 
@@ -105,45 +105,8 @@
   }
 
   function sprites() {
-    const ghost = (frame) => canvasTex(64, 128, (g) => {
-      // gaunt hanging figure in a torn shroud
-      const sway = frame ? 2 : -2;
-      const gr = g.createLinearGradient(0, 10, 0, 128); gr.addColorStop(0, '#dfe5e6'); gr.addColorStop(0.55, '#8f9b9f'); gr.addColorStop(1, 'rgba(70,80,85,0)');
-      // long thin arms hanging almost to the floor, drawn behind the shroud
-      g.strokeStyle = '#a9b3b5'; g.lineWidth = 2.6; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(22, 48); g.quadraticCurveTo(8, 72 + sway, 9, 104 + sway); g.stroke();
-      g.beginPath(); g.moveTo(42, 48); g.quadraticCurveTo(56, 72 - sway, 55, 104 - sway); g.stroke();
-      g.lineWidth = 1.1; for (const [hx, hy] of [[9, 104 + sway], [55, 104 - sway]]) for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(hx, hy); g.lineTo(hx + k * 2.2, hy + 10 + Math.abs(k) * 1.5); g.stroke(); }
-      // narrow, hunched shroud in torn strips
-      g.fillStyle = gr;
-      g.beginPath(); g.moveTo(32, 6); g.bezierCurveTo(46, 6, 47, 28, 44, 42); g.lineTo(46 + sway, 66); g.lineTo(44 + sway, 124);
-      for (let i = 0; i < 8; i++) g.lineTo(44 + sway - i * 3.2, 96 + ((i * 41 + frame * 17) % 30));
-      g.lineTo(20 - sway, 126); g.lineTo(18 - sway, 66); g.lineTo(20, 42); g.bezierCurveTo(17, 28, 18, 6, 32, 6); g.fill();
-      g.strokeStyle = 'rgba(40,45,50,.35)'; g.lineWidth = 1; for (let x = 24; x < 42; x += 4) { g.beginPath(); g.moveTo(x, 50); g.lineTo(x + sway * 0.5, 110); g.stroke(); }
-      // face: long skull, hollow eyes, stretched mouth
-      g.fillStyle = '#f1f1ea'; g.beginPath(); g.ellipse(32, 26, 11, 17, 0, 0, 7); g.fill();
-      g.fillStyle = '#000';
-      g.beginPath(); g.ellipse(26, 22, 4.2, 6.5, 0.2, 0, 7); g.ellipse(38, 22, 4.2, 6.5, -0.2, 0, 7); g.fill();
-      g.beginPath(); g.ellipse(32, 37, 3.5, 7 + frame, 0, 0, 7); g.fill();
-      g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(25.5, 27, 1, 8); g.fillRect(38, 27, 1, 10); // dripping
-    }, (g) => {
-      g.fillStyle = '#ff1a2e'; g.beginPath(); g.arc(26.5, 23, 1.6, 0, 7); g.arc(37.5, 23, 1.6, 0, 7); g.fill();
-    });
-    const shade = (frame) => canvasTex(64, 128, (g) => {
-      g.fillStyle = '#030104';
-      g.beginPath(); g.moveTo(32, 14);
-      for (let i = 0; i <= 24; i++) { const a = Math.PI + (i / 24) * Math.PI * 2; const rr = (i % 2 ? 20 : 28) + ((i * 7 + frame * 5) % 6); g.lineTo(32 + Math.cos(a) * rr * 0.9, 58 + Math.sin(a) * rr * 1.5); }
-      g.fill();
-      g.fillRect(14, 60, 36, 50);
-      for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(14 + i * 5, 108); g.lineTo(16 + i * 5 + (frame ? 2 : -2), 126); g.lineTo(19 + i * 5, 108); g.fill(); }
-      g.strokeStyle = '#030104'; g.lineWidth = 3;
-      g.beginPath(); g.moveTo(16, 62); g.lineTo(0, 92); g.moveTo(48, 62); g.lineTo(64, 90); g.stroke();
-      g.fillStyle = '#d9d2c0'; // teeth
-      for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(17 + i * 3.4, 54); g.lineTo(18.7 + i * 3.4, 61 + (i % 2) * 2); g.lineTo(20.4 + i * 3.4, 54); g.fill(); }
-    }, (g) => {
-      g.fillStyle = '#ff2236';
-      for (const [ex, ey] of [[23, 40], [41, 40], [32, 33], [18, 30], [46, 31]]) { g.beginPath(); g.ellipse(ex, ey + (frame ? 1 : 0), 2.2, 1.3, 0, 0, 7); g.fill(); }
-    });
+    const MD = window.Monsters.D, mon = {};
+    for (const k in MD) mon[k] = [0, 1].map(fr => canvasTex(MD[k].w, MD[k].h, (g) => MD[k].draw(g, fr), MD[k].em ? (g) => MD[k].em(g, fr) : null));
     const cuteGhost = (frame) => canvasTex(64, 96, (g) => {
       g.fillStyle = '#f6f6ff'; g.beginPath(); g.arc(32, 34, 22, Math.PI, 0); g.lineTo(54, 86);
       for (let i = 0; i < 4; i++) g.quadraticCurveTo(54 - i * 11 - 5.5, 76 + ((i + frame) % 2) * 10, 54 - (i + 1) * 11, 86);
@@ -181,9 +144,11 @@
       g.fillStyle = '#020102'; g.beginPath(); g.ellipse(16, 14, 7, 9, 0, 0, 7); g.fill();
       g.beginPath(); g.moveTo(6, 24); g.lineTo(26, 24); g.lineTo(24, 96); g.lineTo(8, 96); g.fill();
     }, (g) => { g.fillStyle = '#ffffff'; g.fillRect(12, 12, 2, 2); g.fillRect(18, 12, 2, 2); });
-    return { ghost: [ghost(0), ghost(1)], shade: [shade(0), shade(1)], cute: [cuteGhost(0), cuteGhost(1)], pumpkin: [pumpkin(), pumpkin()], key, batt, door: [door(false), door(true)], figure };
+    return { mon, cute: [cuteGhost(0), cuteGhost(1)], pumpkin: [pumpkin(), pumpkin()], key, batt, door: [door(false), door(true)], figure };
   }
   const SP = sprites();
+  const MSET = /[?&]monsters=classic/.test(location.search) ? 'classic' : /[?&]monsters=new/.test(location.search) ? 'new' : 'classic';
+  const GLOW = { ghost: 22, shade: 0, widow: 24, grinner: 6, hollow: 3 };
 
   // ---------- maze ----------
   function makeMaze(n, rng) {
@@ -268,7 +233,7 @@
     updateHud();
   }
   function makeMonster(tx, ty, i) {
-    return { x: tx + 0.5, y: ty + 0.5, tx, ty, ptx: tx, pty: ty, kind: i % 3 === 2 ? 'shade' : 'ghost', bob: Math.random() * 6, hunting: false, stun: 0 };
+    return { x: tx + 0.5, y: ty + 0.5, tx, ty, ptx: tx, pty: ty, kind: window.Monsters.SETS[MSET][i % 3], bob: Math.random() * 6, hunting: false, stun: 0 };
   }
   function respawnFar(mon) {
     const d = S.dist, W = S.maze.W, opts = [];
@@ -496,9 +461,8 @@
     for (const mon of S.monsters) {
       const fr = Math.floor(mon.bob * 0.8) % 2, d = Math.hypot(mon.x - p.x, mon.y - p.y);
       let tex, size, glow;
-      if (S.scaredy) { tex = mon.kind === 'shade' ? SP.pumpkin[0] : SP.cute[fr]; size = mon.kind === 'shade' ? 0.45 : 0.7; glow = 70; }
-      else if (mon.kind === 'shade') { tex = SP.shade[fr]; size = 1.05; glow = 0; }
-      else { tex = SP.ghost[fr]; size = 1.1; glow = mon.hunting ? 34 : 22; }
+      if (S.scaredy) { const pk = mon.kind === 'shade' || mon.kind === 'hollow'; tex = pk ? SP.pumpkin[0] : SP.cute[fr]; size = pk ? 0.45 : 0.7; glow = 70; }
+      else { tex = SP.mon[mon.kind][fr]; size = window.Monsters.D[mon.kind].size; glow = GLOW[mon.kind] + (mon.hunting ? 10 : 0); }
       const jit = !S.scaredy && mon.hunting && d < 3 ? (Math.random() - 0.5) * 0.06 * (3 - d) : 0;
       list.push({ x: mon.x + jit, y: mon.y + jit, tex, size, lift: S.scaredy ? 0.1 + Math.sin(mon.bob) * 0.05 : 0.02 + Math.sin(mon.bob) * 0.03, glow, mon: true });
     }
@@ -775,6 +739,14 @@
     if (u < 0.05) { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); return; } // blinding pop on impact
     g.fillStyle = Math.random() < 0.1 ? '#2a0008' : '#000'; g.fillRect(0, 0, w, h);
     const s = Math.min(w, h) * (0.6 + u * 0.7) * (1 + (Math.random() - 0.5) * 0.05);
+    const MD = window.Monsters.D[kind];
+    if (MD && MD.face && kind !== 'ghost' && kind !== 'shade') {
+      const tex = SP.mon[kind][Math.random() < 0.5 ? 0 : 1].canvas, [fx, fy, fw, fh] = MD.face;
+      const sw = fw * tex.width, sh = fh * tex.height, k = Math.max(w / sw, h / sh) * (0.9 + u * 0.5);
+      g.imageSmoothingEnabled = false;
+      g.drawImage(tex, fx * tex.width, fy * tex.height, sw, sh, w / 2 - sw * k / 2 + (Math.random() - 0.5) * 30, h / 2 - sh * k / 2 + (Math.random() - 0.5) * 30, sw * k, sh * k);
+      if (Math.random() < 0.25) { g.fillStyle = 'rgba(160,0,20,.35)'; g.fillRect(0, 0, w, h); }
+    } else {
     g.save(); g.translate(w / 2 + (Math.random() - 0.5) * 24, h / 2 + (Math.random() - 0.5) * 24);
     if (kind === 'shade') {
       g.fillStyle = '#050106'; g.beginPath(); g.ellipse(0, 0, s * 0.55, s * 0.7, 0, 0, 7); g.fill();
@@ -794,6 +766,7 @@
       g.fillStyle = 'rgba(0,0,0,.65)'; g.fillRect(-s * 0.17, -s * 0.0, s * 0.012, s * 0.2); g.fillRect(s * 0.13, -s * 0.0, s * 0.01, s * 0.26);
     }
     g.restore();
+    }
     const v = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.7);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.95)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
     g.fillStyle = 'rgba(255,255,255,.07)'; for (let i = 0; i < 160; i++) g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
@@ -801,7 +774,7 @@
   function ambientScare() {
     if (S.scaredy) { S.effects.push({ kind: 'bat', t: 0, dur: 2.2 }); Snd.squeak(); return; }
     const r = Math.random(), p = S.player;
-    if (r < 0.25) { setMode('scare'); jumpscare(() => { setMode('play'); toast('…was that real?'); }, 'ghost'); }
+    if (r < 0.25) { setMode('scare'); jumpscare(() => { setMode('play'); toast('…was that real?'); }, window.Monsters.SETS[MSET][Math.floor(Math.random() * 3)]); }
     else if (r < 0.7) {
       // a figure stands at the end of the corridor you are looking down, then is gone
       let d = 0.5; while (d < 7 && !wallAt(p.x + Math.cos(p.a) * (d + 0.3), p.y + Math.sin(p.a) * (d + 0.3))) d += 0.25;
