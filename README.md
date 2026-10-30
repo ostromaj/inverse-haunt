@@ -32,6 +32,11 @@ Each floor is a big looping maze (17×17 up to 25×25) with open pillar halls yo
 - Batteries recharge the flashlight.
 - **Every catch is a jumpscare** (the monster's own face, full screen, with a shriek). A few extra random scares happen while exploring. **Scaredy-cat mode** turns them all off and makes the monsters cute.
 - Monsters: **the Grinner** moves like a broken puppet: it freezes, then lurches forward in bursts with its head snapping to new angles and its joints cracking. Shine your light on it and it locks up and twitches. **The Shade** is a hunched shadow that is mostly mouth.
+- **Fear levels:** Scaredy-cat (cute monsters, no jumpscares), Normal, and **Horrifying**. Horrifying swaps in three completely different monsters that all move wrong:
+  - **The Bender** walks on all fours bent over backwards with its upside-down face looking at you. It scuttles in bursts with its limbs flickering, then freezes while its head wrenches around.
+  - **The Tall One** is too tall for the hallway, so it's folded down from the ceiling. It **only moves when you aren't looking at it**.
+  - **The Hanger** crawls along the ceiling with its face dangling toward you, convulsing harder the closer it gets.
+  - Everything moves in stop-motion jumps with glitches and afterimages. Monsters slip around behind you when they lose you, footsteps follow you and stop when you turn, the flashlight dies at random, there is one extra monster per floor, and grabbing a key wakes *everything*.
 - **Room codes:** everyone who types the same code gets the same house and the same questions, so a class can race (highest score wins, time breaks ties).
 - Teachers can add `?teacher=1` to the URL to start on any floor.
 

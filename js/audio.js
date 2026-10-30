@@ -131,7 +131,7 @@
     wail.bp.frequency.setTargetAtTime(f * 1.2, t, 0.3);
     wail.vib.frequency.setTargetAtTime(5 + 6 * level, t, 0.3);
     wail.vg.gain.setTargetAtTime(20 + 50 * level, t, 0.3);
-    wail.out.gain.setTargetAtTime(level <= 0 ? 0 : 0.03 + 0.17 * level * level, t, level <= 0 ? 0.05 : 0.12);
+    wail.out.gain.setTargetAtTime(level <= 0 ? 0 : (0.03 + 0.17 * level * level) * (A.horror ? 1.4 : 1), t, level <= 0 ? 0.05 : 0.12);
     if (wail.pn && pan != null) wail.pn.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)) * 0.85, t, 0.1);
   };
   // the catch: a loud, piercing high scream
@@ -169,6 +169,17 @@
       const g = ctx.createGain(); g.gain.value = 0.9;
       src.connect(hp); hp.connect(g); g.connect(out); src.start(t);
     }
+  };
+  // a heavy, slow footstep directly behind you
+  A.behindStep = () => {
+    if (!ctx || A.gentle) return;
+    const len = Math.floor(ctx.sampleRate * 0.18), buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / len, 4) * (c ? 0.9 : 1); }
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380;
+    const g = ctx.createGain(); g.gain.value = 1.1;
+    src.connect(lp); lp.connect(g); g.connect(master); src.start();
+    tone(58, 0.16, 'sine', 0.5);
   };
   A.step = () => { noise(0.06, 0.05, 400, 1); };
   // continuous dread layer: low grinding moan + breathy noise, scaled by how close a hunter is

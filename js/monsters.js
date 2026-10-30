@@ -214,6 +214,115 @@
     for (let k = 0; k < 5; k++) { g.beginPath(); g.moveTo(44 + k * 2.2, 51); g.lineTo(44 + k * 2.2, 55); g.stroke(); }
   }, em(g) { g.fillStyle = '#ff1f33'; g.fillRect(41.5, 39.2, 1.6, 1.6); g.fillRect(53, 39.2, 1.6, 1.6); }, face: [0.25, 0.08, 0.5, 0.3] };
 
-  const SETS = { main: ['grinner', 'shade'], classic: ['ghost', 'ghost', 'shade'], new: ['widow', 'grinner', 'hollow'] };
+  // ================= HORRIFYING MODE =================
+
+  // THE BENDER — walks on all fours bent over backwards. Its head hangs upside down
+  // between its shoulders, eyes open far too wide, mouth gaping above them.
+  // 6 frames: 0-3 skitter cycle, 4-5 the head wrenching around.
+  D.spider = { w: 112, h: 192, size: 0.95, frames: 6, draw(g, frame) {
+    const step = [[0, 0], [5, -4], [0, 3], [-5, -2], [2, 1], [-2, 0]][frame];
+    const skin = '#b9b5ac', dark = '#5e5a54', ink = '#120d0c';
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    // limbs: knees and elbows jut up far above the body
+    const limb = (x0, y0, xk, yk, xf, yf, w) => { g.strokeStyle = dark; g.lineWidth = w + 1.2; g.beginPath(); g.moveTo(x0, y0); g.lineTo(xk, yk); g.lineTo(xf, yf); g.stroke(); g.strokeStyle = skin; g.lineWidth = w; g.stroke(); };
+    limb(48, 70, 18 - step[0], 18 + step[1], 10 + step[0], 186, 3.6);       // back legs
+    limb(64, 70, 94 + step[0], 20 - step[1], 102 - step[0], 186, 3.6);
+    limb(46, 112, 6 + step[1], 60 - step[0], 14 - step[1], 188, 3.2);       // arms
+    limb(66, 112, 106 - step[1], 62 + step[0], 98 + step[1], 188, 3.2);
+    // fingers and toes splayed on the floor
+    g.strokeStyle = dark; g.lineWidth = 1.2;
+    for (const [x, s] of [[10 + step[0], -1], [102 - step[0], 1], [14 - step[1], -1], [98 + step[1], 1]]) for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(x, 184); g.lineTo(x + s * (k * 3 - 2), 191); g.stroke(); }
+    // torso arched up and back like a bridge
+    const tg = g.createLinearGradient(0, 50, 0, 125); tg.addColorStop(0, '#8b877f'); tg.addColorStop(1, skin);
+    g.fillStyle = tg; g.beginPath(); g.ellipse(56, 92, 15, 34, 0, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(30,25,20,.5)'; g.lineWidth = 1.1;
+    for (let k = 0; k < 7; k++) { g.beginPath(); g.moveTo(44, 74 + k * 6); g.quadraticCurveTo(56, 78 + k * 6, 68, 74 + k * 6); g.stroke(); }
+    // the head: upside down, hanging below the shoulders
+    const spin = frame === 4 ? 1.6 : frame === 5 ? -2.4 : 0;
+    g.save(); g.translate(56, 140); g.rotate(Math.PI + spin);
+    g.fillStyle = '#cfcac0'; g.beginPath(); g.ellipse(0, 0, 15, 19, 0, 0, 7); g.fill();
+    g.fillStyle = ink; g.beginPath(); g.ellipse(-6, -6, 6, 6.5, 0, 0, 7); g.ellipse(6, -6, 6, 6.5, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(0, 10, 6, 7 + (frame % 2) * 2, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.75)'; g.fillRect(-7.5, -1, 1.3, 9); g.fillRect(-5, -1, 0.9, 6); g.fillRect(5.5, -1, 1.3, 11); g.fillRect(7.6, -1, 0.9, 5);
+    g.fillStyle = 'rgba(30,20,20,.5)'; g.beginPath(); g.ellipse(-11, 2, 3, 6, 0.2, 0, 7); g.ellipse(11, 2, 3, 6, -0.2, 0, 7); g.fill();
+    // strands of hair hanging "up" off the inverted skull
+    g.restore();
+    g.strokeStyle = '#0b0807'; g.lineWidth = 1.2;
+    for (let i = 0; i < 16; i++) { const x = 44 + i * 1.6; g.beginPath(); g.moveTo(x, 156); g.lineTo(x + (J(i) - 0.5) * 6, 166 + J(i + 9) * 14); g.stroke(); }
+  }, em(g, frame) {
+    const spin = frame === 4 ? 1.6 : frame === 5 ? -2.4 : 0;
+    g.save(); g.translate(56, 140); g.rotate(Math.PI + spin);
+    g.fillStyle = '#ffffff'; g.fillRect(-6.2, -6.6, 1.3, 1.3); g.fillRect(5.2, -6.6, 1.3, 1.3);
+    g.fillStyle = '#e8e0cc';
+    for (let k = -4; k <= 4; k++) { g.beginPath(); g.moveTo(k * 1.4 - 0.6, 4); g.lineTo(k * 1.4, 7); g.lineTo(k * 1.4 + 0.6, 4); g.fill(); }
+    g.restore();
+  }, face: [0.28, 0.6, 0.44, 0.3] };
+
+  // THE TALL ONE — far too tall for the hallway, so it is folded over: its body rises
+  // to the ceiling and its head hangs back down in front of its chest. It only moves
+  // when you are not looking at it.
+  D.tall = { w: 72, h: 192, size: 1.02, frames: 4, draw(g, frame) {
+    const tw = [[0, 0], [2, 1], [-2, 2], [1, -2]][frame];
+    const body = '#232027', skin = '#c4c0bb';
+    g.lineCap = 'round';
+    // legs: very long, very thin
+    g.strokeStyle = body; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(32, 100); g.lineTo(28, 190); g.moveTo(40, 100); g.lineTo(44, 190); g.stroke();
+    // torso rising to the ceiling, then folding forward
+    g.fillStyle = body; g.beginPath(); g.moveTo(26, 104); g.lineTo(46, 104); g.lineTo(48, 18); g.quadraticCurveTo(36, 0, 24, 18); g.closePath(); g.fill();
+    // arms: down to the floor, elbows bent the wrong way
+    g.strokeStyle = skin; g.lineWidth = 2.2;
+    g.beginPath(); g.moveTo(26, 22); g.lineTo(8 + tw[0], 90); g.lineTo(14 - tw[0], 176); g.stroke();
+    g.beginPath(); g.moveTo(46, 22); g.lineTo(64 - tw[0], 96); g.lineTo(58 + tw[0], 180); g.stroke();
+    g.lineWidth = 1;
+    for (const [x, y, s] of [[14 - tw[0], 176, -1], [58 + tw[0], 180, 1]]) for (let k = 0; k < 5; k++) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + s * (k - 2) * 2.4, y + 10 + (k % 2) * 3); g.stroke(); }
+    // long neck hanging down from the fold at the ceiling
+    g.strokeStyle = skin; g.lineWidth = 4; g.beginPath(); g.moveTo(36, 8); g.quadraticCurveTo(38 + tw[1], 30, 36 + tw[0], 50 + tw[1]); g.stroke();
+    // the head, upside down, facing you
+    g.save(); g.translate(36 + tw[0], 64 + tw[1]); g.rotate(Math.PI + tw[0] * 0.05);
+    g.fillStyle = '#d8d4cc'; g.beginPath(); g.ellipse(0, 0, 10, 15, 0, 0, 7); g.fill();
+    g.fillStyle = '#050304'; g.beginPath(); g.ellipse(-4.2, -4, 3.4, 5.5, 0.15, 0, 7); g.ellipse(4.2, -4, 3.4, 5.5, -0.15, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(0, 8, 2.2, 5 + frame * 0.6, 0, 0, 7); g.fill();
+    g.restore();
+  }, em(g, frame) {
+    const tw = [[0, 0], [2, 1], [-2, 2], [1, -2]][frame];
+    g.save(); g.translate(36 + tw[0], 64 + tw[1]); g.rotate(Math.PI + tw[0] * 0.05);
+    g.fillStyle = '#ffffff'; g.fillRect(-4.8, -3.6, 1.2, 1.2); g.fillRect(3.6, -3.6, 1.2, 1.2);
+    g.restore();
+  }, face: [0.15, 0.2, 0.7, 0.3] };
+
+  // THE HANGER — clings to the ceiling. A knot of limbs up top, a long neck dangling
+  // a face down toward you, jaw hanging open. Convulses when it gets close.
+  D.hanger = { w: 96, h: 160, size: 0.85, frames: 4, ceiling: true, draw(g, frame) {
+    const sw = [0, 4, -3, 2][frame];
+    const skin = '#b3aea6', dark = '#4c4844';
+    g.lineCap = 'round';
+    // limbs gripping the ceiling
+    g.strokeStyle = dark; g.lineWidth = 3;
+    for (const [x0, xk, yk, x1] of [[40, 14, 26, 2], [56, 82, 24, 94], [44, 22, 36, 12], [52, 74, 36, 86]]) { g.beginPath(); g.moveTo(x0, 12); g.lineTo(xk + sw * 0.3, yk); g.lineTo(x1, 2); g.stroke(); }
+    // hunched back pressed to the ceiling
+    g.fillStyle = '#8a857e'; g.beginPath(); g.ellipse(48, 14, 18, 14, 0, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(30,25,20,.5)'; g.lineWidth = 1; for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(48 + k * 5, 4); g.lineTo(48 + k * 6, 26); g.stroke(); }
+    // two arms hanging down, swaying
+    g.strokeStyle = skin; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(38, 22); g.quadraticCurveTo(30 + sw, 70, 34 + sw * 1.5, 118); g.stroke();
+    g.beginPath(); g.moveTo(58, 22); g.quadraticCurveTo(66 + sw, 76, 62 + sw * 1.5, 124); g.stroke();
+    g.lineWidth = 1; for (const [x, y] of [[34 + sw * 1.5, 118], [62 + sw * 1.5, 124]]) for (let k = 0; k < 5; k++) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + (k - 2) * 2, y + 10 + (k % 2) * 3); g.stroke(); }
+    // long neck down to the face
+    g.strokeStyle = skin; g.lineWidth = 5; g.beginPath(); g.moveTo(48, 24); g.quadraticCurveTo(48 - sw, 70, 48 + sw * 0.6, 108); g.stroke();
+    g.save(); g.translate(48 + sw * 0.6, 126); g.rotate(sw * 0.04);
+    g.fillStyle = '#d5d0c6'; g.beginPath(); g.ellipse(0, 0, 13, 19, 0, 0, 7); g.fill();
+    g.fillStyle = '#060404'; g.beginPath(); g.ellipse(-5, -6, 4, 5, 0.2, 0, 7); g.ellipse(5, -6, 4, 5, -0.2, 0, 7); g.fill();
+    // jaw hanging open, far too long
+    g.beginPath(); g.ellipse(0, 10, 5, 10 + frame, 0, 0, 7); g.fill();
+    g.restore();
+  }, em(g, frame) {
+    const sw = [0, 4, -3, 2][frame];
+    g.save(); g.translate(48 + sw * 0.6, 126); g.rotate(sw * 0.04);
+    g.fillStyle = '#ff2a3a'; g.fillRect(-5.6, -5.6, 1.4, 1.4); g.fillRect(4.2, -5.6, 1.4, 1.4);
+    g.restore();
+  }, face: [0.2, 0.6, 0.6, 0.4] };
+
+  const SETS = { main: ['grinner', 'shade'], horror: ['spider', 'tall', 'hanger'], classic: ['ghost', 'ghost', 'shade'], new: ['widow', 'grinner', 'hollow'] };
   root.Monsters = { D, SETS };
 })(window);

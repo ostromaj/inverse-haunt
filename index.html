@@ -47,7 +47,11 @@
       </div>
       <p class="hint">Same room code = same haunted house and same questions. Race your friends: highest score wins, fastest time breaks ties.</p>
       <div class="row" style="margin-top:14px">
-        <label class="toggle"><input type="checkbox" id="scaredyIn"> Scaredy-cat mode (no jumpscares, cute monsters)</label>
+        <fieldset class="fear"><legend>How scared do you want to be?</legend>
+          <label><input type="radio" name="fear" value="scaredy"><span><b>Scaredy-cat</b>Cute monsters, no jumpscares</span></label>
+          <label><input type="radio" name="fear" value="normal" checked><span><b>Normal</b>Spooky, with jumpscares</span></label>
+          <label class="hz"><input type="radio" name="fear" value="horror"><span><b>Horrifying</b>Different monsters. Not for the faint of heart.</span></label>
+        </fieldset>
       </div>
       <div class="row">
         <label class="toggle"><input type="checkbox" id="muteIn"> Mute sound</label>
@@ -80,7 +84,11 @@
   <div class="mid">
     <h2>Paused</h2>
     <div class="panel" style="text-align:left">
-      <div class="row"><label class="toggle"><input type="checkbox" id="scaredyPause"> Scaredy-cat mode</label></div>
+      <fieldset class="fear"><legend>Fear level</legend>
+        <label><input type="radio" name="fearP" value="scaredy"><span><b>Scaredy-cat</b></span></label>
+        <label><input type="radio" name="fearP" value="normal"><span><b>Normal</b></span></label>
+        <label class="hz"><input type="radio" name="fearP" value="horror"><span><b>Horrifying</b></span></label>
+      </fieldset>
       <div class="row"><label class="toggle"><input type="checkbox" id="mutePause"> Mute sound</label></div>
       <div class="row"><button class="btn" id="resumeBtn" type="button">Resume</button><button class="btn ghost" id="quitBtn" type="button">Quit to title</button></div>
     </div>

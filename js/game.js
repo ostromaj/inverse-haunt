@@ -18,7 +18,7 @@
   ];
 
   const S = {
-    mode: 'title', seed: 'x', code: '', name: '', scaredy: false,
+    mode: 'title', seed: 'x', code: '', name: '', scaredy: false, horror: false, nextStalk: 20, nextSteps: 15,
     floor: 0, attempt: 0, maze: null, player: null, monsters: [], keys: [], batts: [], door: null, sprites: [],
     keysGot: 0, sealsLeft: 1, candles: 5, battery: 100, score: 0, streak: 0, time: 0,
     deck: [], deckIdx: 0, deckCycle: 0, deckFloor: -1, stats: {}, qTotal: 0, qRight: 0, banished: 0, deaths: 0,
@@ -148,6 +148,8 @@
   }
   const SP = sprites();
   const MSET = (location.search.match(/[?&]monsters=(classic|new|main)/) || [0, 'main'])[1];
+  const roster = () => window.Monsters.SETS[S.horror ? 'horror' : MSET];
+  const GLOWH = { spider: 6, tall: 4, hanger: 5 };
   const GLOW = { ghost: 22, shade: 0, widow: 24, grinner: 6, hollow: 3 };
 
   // ---------- maze ----------
@@ -250,19 +252,20 @@
     S.batts = batts.map(b => ({ x: b.x + 0.5, y: b.y + 0.5, got: false, seen: false }));
     S.monsters = [];
     const spawnCells = rng.shuffle(cells.filter(c => c.d >= 10 && !taken.includes(c)));
-    for (let i = 0; i < F.monsters; i++) { const c = spawnCells[i % spawnCells.length]; S.monsters.push(makeMonster(c.x, c.y, i)); }
+    const count = F.monsters + (S.horror ? 1 : 0);
+    for (let i = 0; i < count; i++) { const c = spawnCells[i % spawnCells.length]; S.monsters.push(makeMonster(c.x, c.y, i)); }
     // face down the first open corridor
     const dir0 = [[1, 0, 0], [0, 1, Math.PI / 2]].find(([a, b]) => !isWall(1 + a, 1 + b)) || [1, 0, 0];
     S.player = { x: 1.5, y: 1.5, a: dir0[2], bob: 0, moving: 0 };
     S.keysGot = 0; S.sealsLeft = F.seals; S.battery = 100; S.candles = 5; S.invuln = 3; S.doorCool = 0;
-    S.nextScare = 40 + Math.random() * 50; S.nextHunt = 22 + Math.random() * 15; S.blackout = 0; S.effects = []; S.distTile = -1; S.dread = 0; S.hit = 0;
+    S.nextScare = S.horror ? 18 + Math.random() * 20 : 40 + Math.random() * 50; S.nextHunt = S.horror ? 6 + Math.random() * 6 : 22 + Math.random() * 15; S.nextStalk = 18 + Math.random() * 10; S.nextSteps = 10 + Math.random() * 10; S.blackout = 0; S.effects = []; S.distTile = -1; S.dread = 0; S.hit = 0;
     S.seen = new Uint8Array(W * W);
     if (S.deckFloor !== S.floor) { S.deck = Qs.floorDeck(S.floor, S.seed, 60); S.deckIdx = 0; S.deckCycle = 0; S.deckFloor = S.floor; }
     buildTextures(F, S.seed + '|tex' + S.floor);
     updateHud();
   }
   function makeMonster(tx, ty, i) {
-    return { x: tx + 0.5, y: ty + 0.5, tx, ty, ptx: tx, pty: ty, kind: window.Monsters.SETS[MSET][i % window.Monsters.SETS[MSET].length], bob: Math.random() * 6, hunting: false, stun: 0, pose: 0, jt: 0, moving: false, twitch: 0 };
+    return { x: tx + 0.5, y: ty + 0.5, tx, ty, ptx: tx, pty: ty, kind: roster()[i % roster().length], rx: tx + 0.5, ry: ty + 0.5, rt: 0, gl: 0, ghost: null, bob: Math.random() * 6, hunting: false, stun: 0, pose: 0, jt: 0, moving: false, twitch: 0 };
   }
   function respawnFar(mon) {
     const d = S.dist, W = S.maze.W, opts = [];
@@ -304,7 +307,7 @@
   // ---------- update ----------
   const RAD = 0.22;
   const blocked = (x, y) => wallAt(x - RAD, y - RAD) || wallAt(x + RAD, y - RAD) || wallAt(x - RAD, y + RAD) || wallAt(x + RAD, y + RAD);
-  const beamRange = () => 4.6 + 5.4 * Math.min(1, S.battery / 40);
+  const beamRange = () => (4.6 + 5.4 * Math.min(1, S.battery / 40)) * (S.horror ? 0.82 : 1);
   function angTo(x, y) { const p = S.player; let a = Math.atan2(y - p.y, x - p.x) - p.a; return Math.atan2(Math.sin(a), Math.cos(a)); }
   function inBeam(x, y) {
     const p = S.player, d = Math.hypot(x - p.x, y - p.y);
@@ -334,13 +337,15 @@
       if (Math.floor(p.bob / Math.PI) !== Math.floor(before / Math.PI)) Snd.step();
     } else p.moving = Math.max(0, p.moving - dt * 4);
 
-    S.battery = Math.max(0, S.battery - dt * 0.42);
+    S.battery = Math.max(0, S.battery - dt * (S.horror ? 0.68 : 0.42));
+    if (S.horror && S.blackout <= 0 && Math.random() < dt * 0.04) S.blackout = 0.25 + Math.random() * 0.5; // the light dies for a moment, for no reason
     S.blackout = Math.max(0, S.blackout - dt);
 
     for (const k of S.keys) if (!k.got && Math.hypot(k.x - p.x, k.y - p.y) < 0.5) {
       k.got = true; S.keysGot++; S.score += 50; Snd.key();
       toast(S.keysGot === 3 ? 'All keys found' : 'Key ' + S.keysGot + ' of 3', S.keysGot === 3 ? 'The door is marked on your map' : '');
-      wakeOne('You hear something stir');
+      if (S.horror) { S.monsters.forEach(m => { m.hunting = true; }); setTimeout(() => { if (S.mode === 'play') { toast('They all heard that'); Snd.whisper(); } }, 700); }
+      else wakeOne('You hear something stir');
     }
     for (const b of S.batts) if (!b.got && Math.hypot(b.x - p.x, b.y - p.y) < 0.5) { b.got = true; S.battery = 100; S.score += 10; Snd.battery(); toast('Fresh batteries'); }
     const ptx = Math.floor(p.x), pty = Math.floor(p.y);
@@ -354,7 +359,7 @@
 
     // the hunt: every so often, the nearest idle monster starts tracking you
     S.nextHunt -= dt;
-    if (S.nextHunt <= 0) { S.nextHunt = 18 + Math.random() * 18; wakeOne(S.scaredy ? 'A ghost wants to play' : 'Something is hunting you'); }
+    if (S.nextHunt <= 0) { S.nextHunt = S.horror ? 8 + Math.random() * 8 : 18 + Math.random() * 18; wakeOne(S.scaredy ? 'A ghost wants to play' : 'Something is hunting you'); }
 
     let near = 99, nearMon = null, seenD = 99, seenMon = null;
     for (const mon of S.monsters) {
@@ -384,6 +389,7 @@
         const base = mon.hunting ? F.speed * (behind ? 1.2 : 1) : 0.8;
         sp = mon.moving ? base * (mon.lit ? 1.1 : 2.6) : 0;
       }
+      if (S.horror) sp = horrorMove(mon, dt, eu, sp, F);
       if (S.scaredy) sp *= 0.8;
       if (mon.stun > 0) sp = 0;
       const gx = mon.tx + 0.5, gy = mon.ty + 0.5, ddx = gx - mon.x, ddy = gy - mon.y, dd = Math.hypot(ddx, ddy);
@@ -396,7 +402,7 @@
         mon.ptx = mon.tx; mon.pty = mon.ty; mon.tx = next[0]; mon.ty = next[1];
       } else { const s2 = Math.min(dd, sp * dt); mon.x += ddx / dd * s2; mon.y += ddy / dd * s2; }
       // last stretch: when in the same corridor and close, lunge straight at you
-      if (mon.hunting && eu < 1.2 && mon.stun <= 0 && (mon.kind !== 'grinner' || mon.moving) && lineOfSight(mon.x, mon.y, p.x, p.y)) { const s3 = sp * dt * 0.8; mon.x += (p.x - mon.x) / eu * s3; mon.y += (p.y - mon.y) / eu * s3; }
+      if (mon.hunting && eu < 1.2 && mon.stun <= 0 && sp > 0 && (mon.kind !== 'grinner' || mon.moving) && lineOfSight(mon.x, mon.y, p.x, p.y)) { const s3 = sp * dt * 0.8; mon.x += (p.x - mon.x) / eu * s3; mon.y += (p.y - mon.y) / eu * s3; }
       if (S.invuln <= 0 && eu < 0.45) { caught(mon); return; }
     }
     S.dread = near <= 7 ? Math.max(0.05, 1 - near / 7) : 0;
@@ -406,10 +412,67 @@
     Snd.setWail(seenMon && !S.scaredy ? Math.max(0.1, Math.pow(1 - seenD / 12, 1.2)) : 0, seenMon ? Math.sin(angTo(seenMon.x, seenMon.y)) : 0);
 
     S.nextScare -= dt;
-    if (S.nextScare <= 0) { S.nextScare = 45 + Math.random() * 70; ambientScare(); }
+    if (S.nextScare <= 0) { S.nextScare = S.horror ? 22 + Math.random() * 25 : 45 + Math.random() * 70; ambientScare(); }
+    if (S.horror) {
+      // something gets behind you
+      S.nextStalk -= dt;
+      if (S.nextStalk <= 0) { S.nextStalk = 16 + Math.random() * 12; stalk(); }
+      // footsteps right behind you... that stop when you turn around
+      S.nextSteps -= dt;
+      if (S.nextSteps <= 0) { S.nextSteps = 12 + Math.random() * 16; S.steps = { n: 4 + Math.floor(Math.random() * 4), t: 0, a: p.a }; }
+      if (S.steps) { S.steps.t -= dt; if (Math.abs(Math.atan2(Math.sin(p.a - S.steps.a), Math.cos(p.a - S.steps.a))) > 1.2) S.steps = null; else if (S.steps.t <= 0) { Snd.behindStep(); S.steps.t = 0.42; if (--S.steps.n <= 0) S.steps = null; } }
+    }
     for (const e of S.effects) e.t += dt;
     S.effects = S.effects.filter(e => e.t < e.dur);
     updateHud();
+  }
+  // ---- Horrifying-mode movement: every monster moves wrong ----
+  function onScreen(mon) { const p = S.player; return Math.abs(angTo(mon.x, mon.y)) < 0.62 && lineOfSight(p.x, p.y, mon.x, mon.y); }
+  function horrorMove(mon, dt, eu, sp, F) {
+    const base = (mon.hunting ? F.speed * 1.15 : 0.9);
+    mon.jt -= dt; mon.gl = Math.max(0, mon.gl - dt);
+    if (mon.kind === 'spider') {
+      // scuttling bursts with limbs flickering, then dead still while the head wrenches around
+      if (mon.jt <= 0) {
+        mon.moving = !mon.moving;
+        mon.jt = mon.moving ? 0.25 + Math.random() * 0.45 : 0.2 + Math.random() * (mon.lit ? 1.2 : 0.7);
+        if (!mon.moving) { mon.pose = Math.random() < 0.6 ? 4 + Math.floor(Math.random() * 2) : mon.pose; if (eu < 10) Snd.crack((1 - eu / 10), Math.sin(angTo(mon.x, mon.y))); }
+      }
+      if (mon.moving) { mon.ft = (mon.ft || 0) - dt; if (mon.ft <= 0) { mon.pose = (mon.pose + 1) % 4; mon.ft = 0.045; } }
+      if (Math.random() < dt * 1.5) mon.gl = 0.12; // glitch jump
+      return mon.moving ? base * (mon.lit ? 1.3 : 2.5) : 0;
+    }
+    if (mon.kind === 'tall') {
+      // only moves while you are not looking at it
+      const watched = onScreen(mon);
+      if (watched) { if (Math.random() < dt * 2.5) { mon.pose = Math.floor(Math.random() * 4); mon.gl = 0.06; } return 0; }
+      if (mon.jt <= 0) { mon.jt = 0.5; mon.pose = Math.floor(Math.random() * 4); }
+      return base * 1.6;
+    }
+    if (mon.kind === 'hanger') {
+      // convulsing, never still; worse the closer it gets
+      mon.ft = (mon.ft || 0) - dt;
+      if (mon.ft <= 0) { mon.pose = Math.floor(Math.random() * 4); mon.ft = eu < 4 ? 0.03 + Math.random() * 0.05 : 0.08 + Math.random() * 0.2; }
+      if (eu < 5 && Math.random() < dt * 3) mon.gl = 0.08;
+      return base * (mon.lit ? 0.7 : 1.25);
+    }
+    return sp;
+  }
+  // a hunter that has lost you slips around behind you
+  function stalk() {
+    const p = S.player, W = S.maze.W, d = S.dist;
+    const cand = S.monsters.filter(m => m.hunting && m.stun <= 0 && !lineOfSight(p.x, p.y, m.x, m.y) && d[m.ty * W + m.tx] >= 8);
+    if (!cand.length) return;
+    const mon = cand[Math.floor(Math.random() * cand.length)], spots = [];
+    for (let y = 1; y < W - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const v = d[y * W + x]; if (v < 4 || v > 7) continue;
+      if (Math.abs(angTo(x + 0.5, y + 0.5)) < 2.1) continue;
+      spots.push([x, y]);
+    }
+    if (!spots.length) return;
+    const [x, y] = spots[Math.floor(Math.random() * spots.length)];
+    Object.assign(mon, { x: x + 0.5, y: y + 0.5, rx: x + 0.5, ry: y + 0.5, tx: x, ty: y, ptx: x, pty: y, stun: 0.6 });
+    Snd.crack(0.9, Math.sin(angTo(mon.x, mon.y)));
   }
   function wakeOne(msg) {
     const idle = S.monsters.filter(m => !m.hunting);
@@ -509,12 +572,23 @@
       const fr = Math.floor(mon.bob * 0.8) % 2, d = Math.hypot(mon.x - p.x, mon.y - p.y);
       let tex, size, glow;
       if (S.scaredy) { const pk = mon.kind === 'shade' || mon.kind === 'hollow'; tex = pk ? SP.pumpkin[0] : SP.cute[fr]; size = pk ? 0.45 : 0.7; glow = 70; }
-      else { tex = SP.mon[mon.kind][mon.kind === 'grinner' ? mon.pose : fr]; size = window.Monsters.D[mon.kind].size; glow = GLOW[mon.kind] + (mon.hunting ? 10 : 0); }
+      else { const nf = SP.mon[mon.kind].length; tex = SP.mon[mon.kind][nf > 2 ? mon.pose % nf : fr]; size = window.Monsters.D[mon.kind].size; glow = (GLOW[mon.kind] ?? GLOWH[mon.kind] ?? 0) + (mon.hunting ? 10 : 0); }
       const jit = !S.scaredy && mon.hunting && d < 3 ? (Math.random() - 0.5) * 0.06 * (3 - d) : 0;
       let lift = S.scaredy ? 0.1 + Math.sin(mon.bob) * 0.05 : 0.02 + Math.sin(mon.bob) * 0.03, gx = 0;
       if (mon.kind === 'grinner' && !S.scaredy) { lift = mon.moving ? Math.random() * 0.04 : 0; if (mon.twitch > 0) gx = (Math.random() - 0.5) * 0.12; }
       const sx2 = -Math.sin(p.a) * gx, sy2 = Math.cos(p.a) * gx;
-      list.push({ x: mon.x + jit + sx2, y: mon.y + jit + sy2, tex, size, lift, glow, mon: true });
+      let mx = mon.x, my = mon.y;
+      if (S.horror && !S.scaredy) {
+        // stop-motion: the drawn position only catches up in jumps
+        mon.rt -= 1 / 60;
+        if (mon.rt <= 0) { mon.ghost = [mon.rx, mon.ry]; mon.rx = mon.x; mon.ry = mon.y; mon.rt = 0.06 + Math.random() * 0.12; }
+        mx = mon.rx; my = mon.ry;
+        if (mon.gl > 0) { const k = (Math.random() - 0.5) * 0.5; mx += -Math.sin(p.a) * k; my += Math.cos(p.a) * k; }
+        if (window.Monsters.D[mon.kind].ceiling) lift = 1 - size;
+        else lift = mon.kind === 'spider' && mon.moving ? Math.random() * 0.03 : 0;
+        if (mon.ghost && Math.random() < 0.35) list.push({ x: mon.ghost[0], y: mon.ghost[1], tex, size, lift, glow: 0, mon: true, faint: true });
+      }
+      list.push({ x: mx + jit + sx2, y: my + jit + sy2, tex, size, lift, glow, mon: true });
     }
     for (const e of S.effects) if (e.kind === 'figure') list.push({ x: e.x, y: e.y, tex: SP.figure, size: 1.05, lift: 0, glow: 0 });
     for (const s of list) s.d = (s.x - p.x) ** 2 + (s.y - p.y) ** 2;
@@ -536,7 +610,7 @@
         const tx = Math.min(T.w - 1, ((x - (scrX - wPx / 2)) / wPx * T.w) | 0);
         for (let y = y0; y <= y1; y++) {
           const ty = Math.min(T.h - 1, ((y - top) / hPx * T.h) | 0), i = ty * T.w + tx, c = T.px[i];
-          if ((c >>> 24) < 128) continue;
+          if ((c >>> 24) < 128 || (s.faint && ((x + y) & 1))) continue;
           if (T.em && T.em[i]) { buf[y * RW + x] = c | 0xff000000; drew = true; continue; }
           const L = am + ((cone[y * RW + x] * fl) >> 8) + s.glow;
           buf[y * RW + x] = L <= 1 ? 0xff000000 : shade(c, L, !s.mon);
@@ -550,12 +624,17 @@
       const n = (S.dread * S.dread * RW * RH * 0.18) | 0;
       for (let i = 0; i < n; i++) { const v = (Math.random() * 120) | 0; buf[(Math.random() * RW * RH) | 0] = 0xff000000 | (v << 16) | (v << 8) | v; }
     }
+    if (S.horror) { const n = (RW * RH * 0.02) | 0; for (let i = 0; i < n; i++) { const v = (Math.random() * 70) | 0; buf[(Math.random() * RW * RH) | 0] = 0xff000000 | (v << 16) | (v << 8) | v; } }
     lx.putImageData(img, 0, 0);
     // blit to screen
     cx.imageSmoothingEnabled = false;
     const shake = (S.hit > 0 ? S.hit * 14 : 0) + (S.dread > 0.6 && !S.scaredy ? (S.dread - 0.6) * 8 : 0);
     const ox = (Math.random() - 0.5) * shake, oy = (Math.random() - 0.5) * shake;
     cx.drawImage(low, ox - shake, oy - shake, VW + 2 * shake, VH + 2 * shake);
+    if (S.horror && Math.random() < 0.025 + S.dread * 0.08) { // screen tear
+      const by = Math.random() * RH, bh = 4 + Math.random() * 18, off = (Math.random() - 0.5) * 60;
+      cx.drawImage(low, 0, by, RW, bh, off, by * VH / RH, VW, bh * VH / RH);
+    }
     // vignette, dread tint
     const v = cx.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * 0.3, VW / 2, VH / 2, Math.max(VW, VH) * 0.75);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.75)'); cx.fillStyle = v; cx.fillRect(0, 0, VW, VH);
@@ -627,13 +706,25 @@
     if (mode !== 'play') { Snd.setHeart(0); Snd.setDread(0); Snd.setWail(0); releaseMouse(); }
   }
   function togglePause() {
-    if (S.mode === 'play') { setMode('paused'); $('scaredyPause').checked = S.scaredy; $('mutePause').checked = Snd.muted; show('pause'); }
+    if (S.mode === 'play') { setMode('paused'); setFear(fearNow()); $('mutePause').checked = Snd.muted; show('pause'); }
     else if (S.mode === 'paused') { show(null); setMode('play'); }
   }
   $('pauseBtn').onclick = () => togglePause();
   $('resumeBtn').onclick = () => togglePause();
   $('quitBtn').onclick = () => { Snd.drone(false); setMode('title'); S.maze = null; show('title'); };
-  $('scaredyPause').onchange = (e) => { S.scaredy = e.target.checked; Snd.gentle = S.scaredy; $('scaredyIn').checked = S.scaredy; };
+  function setFear(level) {
+    S.scaredy = level === 'scaredy'; S.horror = level === 'horror';
+    Snd.gentle = S.scaredy; Snd.horror = S.horror;
+    cv.classList.toggle('horror', S.horror);
+    document.querySelectorAll('input[name=fear],input[name=fearP]').forEach(r => { r.checked = r.value === level; });
+    try { localStorage.setItem('ih_fear', level); } catch (e) { /* ignore */ }
+  }
+  const fearNow = () => (S.horror ? 'horror' : S.scaredy ? 'scaredy' : 'normal');
+  document.querySelectorAll('input[name=fear]').forEach(r => r.onchange = () => setFear(r.value));
+  document.querySelectorAll('input[name=fearP]').forEach(r => r.onchange = () => {
+    const was = S.horror; setFear(r.value);
+    if (was !== S.horror && S.maze) toast(S.horror ? 'Horrifying mode starts on the next floor' : 'Back to normal on the next floor');
+  });
   $('mutePause').onchange = (e) => { Snd.setMuted(e.target.checked); $('muteIn').checked = e.target.checked; };
   function between(title, text, btn, then) {
     setMode('between'); $('btTitle').textContent = title; $('btText').innerHTML = text; $('btBtn').textContent = btn;
@@ -725,7 +816,7 @@
     setMode('scare'); S.hit = 1;
     if (S.scaredy) Snd.caught(); else Snd.shriek();
     const jump = !S.scaredy;
-    const go = () => askQuestion(S.scaredy ? 'Boo! A friendly ghost wants a math problem' : 'It caught you', (correct) => {
+    const go = () => askQuestion(S.scaredy ? 'Boo! A friendly ghost wants a math problem' : S.horror ? 'It has you' : 'It caught you', (correct) => {
       if (correct) {
         S.flashT = 0.7; Snd.banish();
         S.monsters = S.monsters.filter(m => m !== mon); S.banished++;
@@ -776,11 +867,12 @@
   function jumpscare(then, kind, silent) {
     const box = $('scare'), c = $('scareCanvas'), g = c.getContext('2d');
     c.width = VW; c.height = VH; box.classList.add('on'); if (!silent) Snd.scream();
-    const t0 = performance.now(), D = 1000;
+    const t0 = performance.now(), D = S.horror ? 1400 : 1000;
     const frame = (now) => {
       const u = (now - t0) / D;
-      if (u >= 1) { box.classList.remove('on'); then(); return; }
+      if (u >= 1) { box.classList.remove('on'); box.style.filter = ''; then(); return; }
       drawFace(g, VW, VH, u, kind);
+      box.style.filter = S.horror && ((u > 0.45 && u < 0.52) || (u > 0.7 && u < 0.74)) ? 'invert(1) contrast(1.6)' : '';
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
@@ -824,7 +916,7 @@
   function ambientScare() {
     if (S.scaredy) { S.effects.push({ kind: 'bat', t: 0, dur: 2.2 }); Snd.squeak(); return; }
     const r = Math.random(), p = S.player;
-    if (r < 0.25) { setMode('scare'); jumpscare(() => { setMode('play'); toast('…was that real?'); }, window.Monsters.SETS[MSET][Math.floor(Math.random() * window.Monsters.SETS[MSET].length)]); }
+    if (r < 0.25) { setMode('scare'); jumpscare(() => { setMode('play'); toast('…was that real?'); }, roster()[Math.floor(Math.random() * roster().length)]); }
     else if (r < 0.7) {
       // a figure stands at the end of the corridor you are looking down, then is gone
       let d = 0.5; while (d < 7 && !wallAt(p.x + Math.cos(p.a) * (d + 0.3), p.y + Math.sin(p.a) * (d + 0.3))) d += 0.25;
@@ -835,8 +927,8 @@
 
   // ---------- start / end ----------
   function startGame() {
-    Snd.init(); Snd.setMuted($('muteIn').checked); Snd.gentle = $('scaredyIn').checked;
-    S.scaredy = $('scaredyIn').checked;
+    Snd.init(); Snd.setMuted($('muteIn').checked);
+    setFear((document.querySelector('input[name=fear]:checked') || {}).value || 'normal');
     S.name = $('nameIn').value.trim().slice(0, 24);
     S.code = $('codeIn').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     S.seed = S.code || ('solo-' + Date.now() + '-' + Math.random());
@@ -848,8 +940,7 @@
   $('startBtn').onclick = startGame;
   $('codeIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') startGame(); });
   if (S.teacher) $('teacherRow').hidden = false;
-  try { $('scaredyIn').checked = localStorage.getItem('ih_scaredy') === '1'; $('nameIn').value = localStorage.getItem('ih_name') || ''; } catch (e) { /* storage blocked */ }
-  $('scaredyIn').onchange = (e) => { try { localStorage.setItem('ih_scaredy', e.target.checked ? '1' : '0'); } catch (er) { /* ignore */ } };
+  try { const fl = localStorage.getItem('ih_fear') || (localStorage.getItem('ih_scaredy') === '1' ? 'scaredy' : 'normal'); document.querySelectorAll('input[name=fear]').forEach(r => { r.checked = r.value === fl; }); $('nameIn').value = localStorage.getItem('ih_name') || ''; } catch (e) { /* storage blocked */ }
   $('nameIn').onchange = (e) => { try { localStorage.setItem('ih_name', e.target.value); } catch (er) { /* ignore */ } };
 
   function endGame() {

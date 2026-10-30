@@ -157,3 +157,17 @@ table.tbl th { background: rgba(0,0,0,.06); font-weight: 400; }
   .floorname { font-size: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { #scare.on { animation: none; } }
+
+/* fear level picker */
+.fear { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.fear legend { font-size: 14px; color: #cdbfd1; margin-bottom: 6px; padding: 0; }
+.fear label { position: relative; cursor: pointer; }
+.fear input { position: absolute; opacity: 0; }
+.fear span { display: block; border: 1px solid var(--wall-hi); border-radius: 4px; padding: 10px; font-size: 12.5px; color: #a99cb0; line-height: 1.35; min-height: 100%; }
+.fear span b { display: block; font-size: 15px; color: var(--page); margin-bottom: 2px; }
+.fear input:checked + span { border-color: var(--candle); background: rgba(242,196,109,.1); }
+.fear .hz input:checked + span { border-color: var(--blood); background: rgba(179,38,58,.18); }
+.fear .hz span b { font-family: var(--title); font-size: 18px; color: #e0485a; font-weight: 400; }
+.fear input:focus-visible + span { outline: 3px solid var(--candle); outline-offset: 2px; }
+#game.horror { filter: saturate(.35) contrast(1.18) brightness(.95); }
+@media (max-width: 560px) { .fear { grid-template-columns: 1fr; } }
