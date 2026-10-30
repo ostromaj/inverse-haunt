@@ -770,6 +770,7 @@
     requestAnimationFrame(frame);
   }
   function drawFace(g, w, h, u, kind) {
+    if (u < 0.05) { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); return; } // blinding pop on impact
     g.fillStyle = Math.random() < 0.1 ? '#2a0008' : '#000'; g.fillRect(0, 0, w, h);
     const s = Math.min(w, h) * (0.6 + u * 0.7) * (1 + (Math.random() - 0.5) * 0.05);
     g.save(); g.translate(w / 2 + (Math.random() - 0.5) * 24, h / 2 + (Math.random() - 0.5) * 24);
