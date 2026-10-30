@@ -362,13 +362,13 @@
     S.nextHunt -= dt;
     if (S.nextHunt <= 0) { S.nextHunt = 18 + Math.random() * 18; wakeOne(S.scaredy ? 'A ghost wants to play' : 'Something is hunting you'); }
 
-    let near = 99;
+    let near = 99, nearMon = null;
     for (const mon of S.monsters) {
       mon.bob += dt * 3; mon.stun = Math.max(0, mon.stun - dt);
       const pd = S.dist[mon.ty * S.maze.W + mon.tx], eu = Math.hypot(mon.x - p.x, mon.y - p.y);
       if (!mon.hunting && (pd >= 0 && pd <= 8 || (eu < 7 && lineOfSight(mon.x, mon.y, p.x, p.y)))) mon.hunting = true;
       if (mon.hunting && pd > 22) mon.hunting = false;
-      if (mon.hunting) near = Math.min(near, pd);
+      if (mon.hunting && pd >= 0 && pd < near) { near = pd; nearMon = mon; }
       mon.lit = inBeam(mon.x, mon.y);
       const behind = Math.abs(angTo(mon.x, mon.y)) > 0.75;
       let sp = mon.hunting ? F.speed * (mon.lit ? 0.45 : behind ? 1.2 : 1) : 0.8;
@@ -391,6 +391,7 @@
     if (S.scaredy) S.dread *= 0.3;
     Snd.setHeart(S.dread > 0 && !S.scaredy ? S.dread : 0);
     Snd.setDread(S.dread);
+    Snd.setWail(nearMon && near <= 16 && !S.scaredy ? Math.max(0.08, Math.pow(1 - near / 16, 1.3)) : 0, nearMon ? Math.sin(angTo(nearMon.x, nearMon.y)) : 0);
 
     S.nextScare -= dt;
     if (S.nextScare <= 0) { S.nextScare = 45 + Math.random() * 70; ambientScare(); }
@@ -609,7 +610,7 @@
     S.mode = mode; input.keys.clear(); input.touchMove = input.touchTurn = null; input.mdx = 0;
     $('hud').classList.toggle('on', mode === 'play' || mode === 'question' || mode === 'scare' || mode === 'paused');
     $('lookHint').classList.toggle('on', mode === 'play' && !input.locked && matchMedia('(pointer: fine)').matches);
-    if (mode !== 'play') { Snd.setHeart(0); Snd.setDread(0); releaseMouse(); }
+    if (mode !== 'play') { Snd.setHeart(0); Snd.setDread(0); Snd.setWail(0); releaseMouse(); }
   }
   function togglePause() {
     if (S.mode === 'play') { setMode('paused'); $('scaredyPause').checked = S.scaredy; $('mutePause').checked = Snd.muted; show('pause'); }
@@ -707,7 +708,8 @@
   }
 
   function caught(mon) {
-    setMode('scare'); Snd.caught(); S.hit = 1;
+    setMode('scare'); S.hit = 1;
+    if (S.scaredy) Snd.caught(); else Snd.shriek();
     const jump = !S.scaredy && Math.random() < 0.55;
     const go = () => askQuestion(S.scaredy ? 'Boo! A friendly ghost wants a math problem' : 'It caught you', (correct) => {
       if (correct) {
@@ -721,7 +723,7 @@
       }
       S.invuln = 2.5; setMode('play');
     });
-    if (jump) jumpscare(go, mon.kind); else flash(go);
+    if (jump) jumpscare(go, mon.kind, true); else flash(go);
   }
   function doorQuestion() {
     const F = FLOORS[S.floor], total = F.seals, n = total - S.sealsLeft + 1;
@@ -757,9 +759,9 @@
     requestAnimationFrame(() => { f.style.transition = 'opacity .5s'; f.style.opacity = '0'; });
     setTimeout(then, 380);
   }
-  function jumpscare(then, kind) {
+  function jumpscare(then, kind, silent) {
     const box = $('scare'), c = $('scareCanvas'), g = c.getContext('2d');
-    c.width = VW; c.height = VH; box.classList.add('on'); Snd.scream();
+    c.width = VW; c.height = VH; box.classList.add('on'); if (!silent) Snd.scream();
     const t0 = performance.now(), D = 1000;
     const frame = (now) => {
       const u = (now - t0) / D;

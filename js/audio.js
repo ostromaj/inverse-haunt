@@ -97,6 +97,62 @@
     sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(0.18, t + 0.02); sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.95);
     sh.connect(sg); sg.connect(out); sh.start(t); sh.stop(t + 1);
   };
+  // the hunting wail: a sustained, high, wavering scream. Louder, higher and more frantic as a hunter closes in;
+  // panned left/right so you can hear which way it is coming from.
+  let wail = null;
+  A.setWail = (level, pan) => {
+    if (!ctx) return;
+    level = A.gentle ? 0 : Math.max(0, Math.min(1, level || 0));
+    if (!wail) {
+      if (level <= 0) return;
+      const out = ctx.createGain(); out.gain.value = 0;
+      const pn = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1600; bp.Q.value = 0.9;
+      const sum = ctx.createGain(); sum.gain.value = 1;
+      const vib = ctx.createOscillator(), vg = ctx.createGain(); vib.frequency.value = 6; vg.gain.value = 30; vib.connect(vg);
+      const wob = ctx.createOscillator(), wg = ctx.createGain(); wob.frequency.value = 0.4; wg.gain.value = 70; wob.connect(wg);
+      const oscs = [[1, 'sawtooth', 0.22], [1.007, 'triangle', 0.5], [0.994, 'triangle', 0.5], [2.01, 'sine', 0.18]].map(([mul, type, v]) => {
+        const o = ctx.createOscillator(); o.type = type; o.frequency.value = 1300 * mul;
+        vg.connect(o.frequency); wg.connect(o.frequency);
+        const g = ctx.createGain(); g.gain.value = v; o.connect(g); g.connect(sum); o.start(); return { o, mul };
+      });
+      const len = ctx.sampleRate * 2, nb = ctx.createBuffer(1, len, ctx.sampleRate), nd = nb.getChannelData(0);
+      for (let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
+      const n = ctx.createBufferSource(); n.buffer = nb; n.loop = true;
+      const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 3200; nf.Q.value = 2;
+      const ngn = ctx.createGain(); ngn.gain.value = 0.35; n.connect(nf); nf.connect(ngn); ngn.connect(sum); n.start();
+      vib.start(); wob.start();
+      sum.connect(bp); bp.connect(out);
+      if (pn) { out.connect(pn); pn.connect(loudIn); } else out.connect(loudIn);
+      wail = { out, pn, oscs, vib, vg, bp };
+    }
+    const t = ctx.currentTime, f = 1150 + 850 * level;
+    for (const { o, mul } of wail.oscs) o.frequency.setTargetAtTime(f * mul, t, 0.3);
+    wail.bp.frequency.setTargetAtTime(f * 1.2, t, 0.3);
+    wail.vib.frequency.setTargetAtTime(5 + 6 * level, t, 0.3);
+    wail.vg.gain.setTargetAtTime(20 + 50 * level, t, 0.3);
+    wail.out.gain.setTargetAtTime(level <= 0 ? 0 : 0.03 + 0.17 * level * level, t, level <= 0 ? 0.08 : 0.2);
+    if (wail.pn && pan != null) wail.pn.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)) * 0.85, t, 0.1);
+  };
+  // the catch: a loud, piercing high scream
+  A.shriek = () => {
+    if (!ctx || A.gentle) return;
+    const t = ctx.currentTime, out = loudIn;
+    tone(150, 0.6, 'sine', 0.8, 0, 35, out);                 // impact
+    noise(0.9, 0.7, 4200, 0.8, 0, 2200, out);                // breath of the scream
+    [0, 11, 23].forEach((det) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), ws = ctx.createWaveShaper(), c = new Float32Array(1024);
+      for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; c[i] = Math.tanh(x * 5); } ws.curve = c;
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(2100 + det * 15, t); o.frequency.linearRampToValueAtTime(2900 + det * 10, t + 0.25); o.frequency.exponentialRampToValueAtTime(1900, t + 1.4);
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 13 + det * 0.2; lg.gain.value = 120; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 1.5);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.015); g.gain.setValueAtTime(0.4, t + 0.9); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.45);
+      o.connect(ws); ws.connect(g); g.connect(out); o.start(t); o.stop(t + 1.5);
+    });
+    const sh = ctx.createOscillator(), sg = ctx.createGain();
+    sh.type = 'square'; sh.frequency.setValueAtTime(3400, t); sh.frequency.exponentialRampToValueAtTime(2500, t + 1.1);
+    sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(0.2, t + 0.01); sg.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
+    sh.connect(sg); sg.connect(out); sh.start(t); sh.stop(t + 1.2);
+  };
   A.step = () => { noise(0.06, 0.05, 400, 1); };
   // continuous dread layer: low grinding moan + breathy noise, scaled by how close a hunter is
   let dread = null;
