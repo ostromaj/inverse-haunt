@@ -15,7 +15,9 @@ Controls: W/S walk, A/D sidestep, mouse (click to lock) or arrow keys to turn, M
 - Finding inverses: linear, quadratic on a restricted domain, rational, exponential/log, self-inverse functions
 - Graphs of inverses: reflection in y = x, intercepts trading axes
 
-## How it plays (about 20–30 minutes)
+## How it plays (about 25–35 minutes)
+Each floor is a big looping maze (17×17 up to 25×25) with open pillar halls you can run circles around, very few dead ends, and plenty of shortcuts, so you can always try to outrun or loop a monster.
+
 | Floor | Question levels | Monsters |
 |---|---|---|
 | 1. The Cellar | Level 1 (diagrams, notation) | 2 |

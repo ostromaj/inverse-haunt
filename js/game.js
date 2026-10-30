@@ -5,15 +5,15 @@
   const $ = (id) => document.getElementById(id);
 
   const FLOORS = [
-    { name: 'The Cellar', n: 6, monsters: 2, speed: 1.30, seals: 1, paper: '#4b4044', stripe: '#41373b', wood: '#2e221d', floor: '#3a2c24', ceil: '#1c1517',
+    { name: 'The Cellar', n: 8, monsters: 2, speed: 1.30, seals: 1, paper: '#4b4044', stripe: '#41373b', wood: '#2e221d', floor: '#3a2c24', ceil: '#1c1517',
       intro: 'Warm-up. Mapping diagrams, function notation, and swapping points. Two of them live down here.' },
-    { name: 'The Kitchen', n: 7, monsters: 3, speed: 1.42, seals: 1, paper: '#4d4a3a', stripe: '#43402f', wood: '#33261a', floor: '#3e3226', ceil: '#1d1a14',
+    { name: 'The Kitchen', n: 9, monsters: 3, speed: 1.42, seals: 1, paper: '#4d4a3a', stripe: '#43402f', wood: '#33261a', floor: '#3e3226', ceil: '#1d1a14',
       intro: 'Inverse values, tables, and the horizontal line test. Something is rattling the pots.' },
-    { name: 'The Library', n: 8, monsters: 4, speed: 1.55, seals: 1, paper: '#3b3f4f', stripe: '#333647', wood: '#2a1f1c', floor: '#35291f', ceil: '#15151c',
+    { name: 'The Library', n: 10, monsters: 4, speed: 1.55, seals: 1, paper: '#3b3f4f', stripe: '#333647', wood: '#2a1f1c', floor: '#35291f', ceil: '#15151c',
       intro: 'Finding inverses, domain and range swaps, and reflecting graphs in y = x. Shh.' },
-    { name: 'The Nursery', n: 9, monsters: 5, speed: 1.68, seals: 1, paper: '#55404c', stripe: '#4a3642', wood: '#30201f', floor: '#3b2b29', ceil: '#1d1418',
+    { name: 'The Nursery', n: 11, monsters: 5, speed: 1.68, seals: 1, paper: '#55404c', stripe: '#4a3642', wood: '#30201f', floor: '#3b2b29', ceil: '#1d1418',
       intro: 'Quadratics on restricted domains, rational and exponential inverses. The rocking chair is moving by itself.' },
-    { name: 'The Attic', n: 10, monsters: 6, speed: 1.82, seals: 3, paper: '#44382f', stripe: '#3a2f27', wood: '#2a1d16', floor: '#3a2b20', ceil: '#140f0c',
+    { name: 'The Attic', n: 12, monsters: 6, speed: 1.82, seals: 3, paper: '#44382f', stripe: '#3a2f27', wood: '#2a1d16', floor: '#3a2b20', ceil: '#140f0c',
       intro: 'The hardest problems in the house. The way out is sealed three times. They know you are here.' },
   ];
 
@@ -154,8 +154,11 @@
   function makeMaze(n, rng) {
     const W = 2 * n + 1, grid = new Uint8Array(W * W).fill(1);
     const open = (x, y) => { grid[y * W + x] = 0; };
+    const wall = (x, y) => { grid[y * W + x] = 1; };
+    const inside = (x, y) => x > 0 && y > 0 && x < W - 1 && y < W - 1;
     const seen = new Uint8Array(n * n), stack = [[0, 0]]; seen[0] = 1; open(1, 1);
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    // 1. a perfect maze as the skeleton
     while (stack.length) {
       const [x, y] = stack[stack.length - 1];
       const nb = rng.shuffle(dirs).map(([dx, dy]) => [x + dx, y + dy, dx, dy]).filter(([a, b]) => a >= 0 && b >= 0 && a < n && b < n && !seen[b * n + a]);
@@ -163,13 +166,38 @@
       const [a, b, ddx, ddy] = nb[0];
       seen[b * n + a] = 1; open(2 * x + 1 + ddx, 2 * y + 1 + ddy); open(2 * a + 1, 2 * b + 1); stack.push([a, b]);
     }
+    // 2. open halls with pillars you can run circles around
+    const rooms = 2 + Math.floor(n / 3);
+    for (let r = 0; r < rooms; r++) {
+      const rw = rng.int(2, 3), rh = rng.int(2, 3);
+      const cx0 = rng.int(0, n - rw), cy0 = rng.int(0, n - rh);
+      if (cx0 === 0 && cy0 === 0 && r === 0) continue;
+      const tx0 = 2 * cx0 + 1, tx1 = 2 * (cx0 + rw - 1) + 1, ty0 = 2 * cy0 + 1, ty1 = 2 * (cy0 + rh - 1) + 1;
+      for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) open(x, y);
+      if (rw === 3 && rh === 3 && rng.chance(0.5)) {
+        // one big central block with a corridor ringing it
+        for (let y = ty0 + 1; y <= ty1 - 1; y++) for (let x = tx0 + 1; x <= tx1 - 1; x++) wall(x, y);
+      } else {
+        // a grid of single pillars
+        for (let y = ty0 + 1; y < ty1; y += 2) for (let x = tx0 + 1; x < tx1; x += 2) wall(x, y);
+      }
+    }
+    // 3. knock out most dead ends (leave a few as hiding places for keys)
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
       const tx = 2 * x + 1, ty = 2 * y + 1;
+      if (grid[ty * W + tx]) continue;
       const walls = dirs.filter(([dx, dy]) => grid[(ty + dy) * W + tx + dx] === 1);
-      if (walls.length === 3 && rng.chance(0.5)) {
-        const ok = walls.filter(([dx, dy]) => x + dx >= 0 && y + dy >= 0 && x + dx < n && y + dy < n);
+      if (walls.length === 3 && rng.chance(0.8)) {
+        const ok = walls.filter(([dx, dy]) => inside(tx + 2 * dx, ty + 2 * dy) && !grid[(ty + 2 * dy) * W + tx + 2 * dx]);
         if (ok.length) { const [dx, dy] = rng.pick(ok); open(tx + dx, ty + dy); }
       }
+    }
+    // 4. extra shortcuts through random walls between corridors
+    for (let y = 1; y < W - 1; y++) for (let x = 1; x < W - 1; x++) {
+      if (!grid[y * W + x] || (x % 2) === (y % 2)) continue;
+      const horiz = x % 2 === 0;
+      const a = horiz ? grid[y * W + x - 1] : grid[(y - 1) * W + x], b2 = horiz ? grid[y * W + x + 1] : grid[(y + 1) * W + x];
+      if (!a && !b2 && rng.chance(0.09)) open(x, y);
     }
     const variant = new Uint8Array(W * W);
     for (let i = 0; i < W * W; i++) variant[i] = Math.floor(rng.next() * 7);
@@ -202,6 +230,7 @@
     const d0 = bfs(1, 1), W = S.maze.W, cells = [];
     for (let y = 1; y < W; y += 2) for (let x = 1; x < W; x += 2) {
       const walls = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => isWall(x + a, y + b)).length;
+      if (d0[y * W + x] < 0) continue;
       cells.push({ x, y, d: d0[y * W + x], dead: walls === 3 });
     }
     const maxD = Math.max(...cells.map(c => c.d));
